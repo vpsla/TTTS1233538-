@@ -3,257 +3,212 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Truyện Audio - Chạy nền Mobile</title>
+    <title>Truyện Audio - Phát Nền</title>
     <style>
-        /* CSS giữ nguyên như code trước */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             min-height: 100vh; 
-            padding: 20px;
+            padding-bottom: 120px; /* Chừa chỗ cho Bottom Player */
         }
-        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); overflow: hidden; }
+        .container { max-width: 1000px; margin: 20px auto; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; }
         
-        .header { background: linear-gradient(135deg, #ff6b6b, #feca57); color: white; padding: 30px; text-align: center; }
-        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; text-align: center; }
+        .header h1 { font-size: 2em; margin-bottom: 5px; }
         
-        .controls { padding: 30px; background: #f8f9fa; border-bottom: 1px solid #eee; }
-        .control-group { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin-bottom: 20px; }
-        select, input, button { padding: 12px 20px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; transition: all 0.3s; }
-        select:focus, input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+        .controls { padding: 20px; background: #fff; border-bottom: 1px solid #eee; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: center;}
         
-        .btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; cursor: pointer; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(102,126,234,0.3); }
-        .btn:active { transform: translateY(0); }
-        .btn-danger { background: linear-gradient(135deg, #ff6b6b, #ee5a52); }
-        .btn-success { background: linear-gradient(135deg, #51cf66, #40c057); }
-        .btn-upload { background: linear-gradient(135deg, #48cae4, #023e8a); }
-        .btn-playing { background: linear-gradient(135deg, #ff6b6b, #ee5a52) !important; animation: pulse 1.5s infinite; }
+        select, input, button { padding: 10px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; outline: none; }
         
+        /* File Upload */
         .file-upload { 
-            position: relative; display: inline-block; cursor: pointer; 
-            border: 2px dashed #667eea; padding: 40px; border-radius: 15px; 
-            text-align: center; transition: all 0.3s; background: #f8f9ff; min-width: 300px;
+            width: 100%; text-align: center; cursor: pointer; border: 2px dashed #667eea; 
+            padding: 30px; border-radius: 15px; background: #f8f9ff; transition: 0.3s;
         }
-        .file-upload:hover { background: #e8f0ff; border-color: #5a67d8; transform: scale(1.02); }
-        .file-upload.dragover { background: #e3f2fd; border-color: #2196f3; transform: scale(1.05); }
-        .file-name { margin-top: 10px; font-weight: bold; color: #667eea; word-break: break-all; font-size: 14px; }
-        .file-size { font-size: 12px; color: #666; margin-top: 5px; }
+        .file-upload:hover { background: #e8f0ff; border-color: #5a67d8; }
+        .file-name { margin-top: 10px; font-weight: bold; color: #667eea; }
         
-        .content { display: flex; min-height: 500px; }
-        .sidebar { width: 300px; background: #f8f9fa; padding: 30px; border-right: 1px solid #eee; }
-        .main { flex: 1; padding: 30px; overflow-y: auto; max-height: 70vh; }
-        
-        .sentence { display: inline-block; padding: 8px 12px; margin: 4px 2px; background: #e9ecef; border-radius: 20px; cursor: pointer; transition: all 0.3s; font-size: 18px; line-height: 1.6; user-select: none; }
-        .sentence:hover { background: #dee2e6; transform: scale(1.02); }
-        .sentence.highlight { background: linear-gradient(135deg, #667eea, #764ba2) !important; color: white; box-shadow: 0 5px 15px rgba(102,126,234,0.4); animation: pulse 1s infinite; }
-        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-        
-        .timer-group { display: flex; gap: 10px; align-items: center; }
-        .rate-group { display: flex; gap: 10px; align-items: center; }
-        #rateVal { font-weight: bold; color: #667eea; min-width: 40px; }
-        
-        .status { text-align: center; padding: 20px; background: #e9ecef; border-radius: 10px; margin-bottom: 20px; }
-        .status.playing { background: #d4edda; color: #155724; }
-        .status.paused { background: #f8d7da; color: #721c24; }
-        .status.error { background: #f8d7da; color: #721c24; }
-        .status.loading { background: #fff3cd; color: #856404; }
-        
-        .progress-bar { width: 100%; height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden; margin-top: 10px; }
-        .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s; width: 0%; }
-        
-        /* Mobile Notification */
-        #notification { 
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); 
-            background: rgba(0,0,0,0.9); color: white; padding: 15px 25px; 
-            border-radius: 25px; font-weight: bold; display: none; z-index: 1000;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        /* Nội dung truyện */
+        .main { padding: 20px; height: 60vh; overflow-y: auto; background: #fff; line-height: 1.8; font-size: 18px; }
+        .paragraph { 
+            padding: 10px; margin-bottom: 10px; border-radius: 10px; cursor: pointer; transition: 0.3s;
+        }
+        .paragraph:hover { background: #f0f0f0; }
+        .paragraph.highlight { 
+            background: #e3f2fd; color: #1565c0; font-weight: bold;
+            border-left: 4px solid #1976d2;
         }
         
+        /* =========================================
+           BOTTOM PLAYER GIAO DIỆN NHƯ NHACCUATUI 
+           ========================================= */
+        .bottom-player {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+            padding: 10px 20px; z-index: 1000;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .progress-container { width: 100%; max-width: 800px; margin-bottom: 10px; }
+        .progress-bar { 
+            width: 100%; height: 6px; background: #ddd; border-radius: 3px; cursor: pointer; overflow: hidden;
+        }
+        .progress-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s; }
+        
+        .player-controls {
+            display: flex; width: 100%; max-width: 800px; justify-content: space-between; align-items: center;
+        }
+        .track-info { display: flex; align-items: center; gap: 15px; flex: 1; }
+        .track-info img { width: 50px; height: 50px; border-radius: 10px; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.2); animation: spin 10s linear infinite; animation-play-state: paused;}
+        .track-info img.playing { animation-play-state: running; }
+        .track-text h4 { margin: 0; font-size: 16px; color: #333; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;}
+        .track-text p { margin: 0; font-size: 13px; color: #777; }
+        
+        .control-buttons { display: flex; align-items: center; gap: 20px; }
+        .btn-icon { background: none; border: none; font-size: 24px; cursor: pointer; color: #333; transition: 0.2s; }
+        .btn-icon:hover { color: #667eea; transform: scale(1.1); }
+        .btn-play { font-size: 40px; color: #667eea; }
+        
+        .extra-controls { flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 10px; font-size: 14px;}
+        
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
         @media (max-width: 768px) {
-            .content { flex-direction: column; }
-            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #eee; }
-            .control-group { flex-direction: column; align-items: stretch; }
-            .file-upload { min-width: auto; }
+            .track-text h4 { font-size: 14px; }
+            .extra-controls { display: none; } /* Ẩn bớt trên mobile */
+            .control-buttons { gap: 15px; }
+            .btn-play { font-size: 35px; }
         }
     </style>
 </head>
 <body>
-    <!-- HTML giữ nguyên như code trước -->
+
+    <!-- THẺ AUDIO CHẠY NGẦM ĐỂ GIỮ HỆ ĐIỀU HÀNH KHÔNG ĐÓNG BĂNG TAB -->
+    <audio id="bgAudio" loop preload="auto">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAo" type="audio/wav">
+    </audio>
+
     <div class="container">
         <div class="header">
-            <h1>📚 Truyện Audio</h1>
-            <p>Chạy nền Mobile 100% - Giống Nhaccuatui!</p>
+            <h1>📚 Truyện Audio Pro</h1>
         </div>
         
         <div class="controls">
-            <div class="control-group">
-                <div class="file-upload" id="fileUpload">
-                    <div>📁 Chọn file TXT (Max 100MB)</div>
-                    <div style="font-size: 14px; color: #666; margin-top: 5px;">Kéo thả file vào đây</div>
-                    <input type="file" id="fileInput" accept=".txt" style="display: none;">
-                    <div class="file-name" id="fileName"></div>
-                    <div class="file-size" id="fileSize"></div>
-                    <div class="progress-bar" id="progressBar" style="display: none;">
-                        <div class="progress-fill" id="progressFill"></div>
-                    </div>
-                </div>
+            <div class="file-upload" id="fileUpload">
+                <div>📁 Nhấn hoặc kéo thả file TXT vào đây</div>
+                <input type="file" id="fileInput" accept=".txt" style="display: none;">
+                <div class="file-name" id="fileName">Chưa chọn file nào</div>
             </div>
             
-            <div class="control-group">
-                <label>📄 Chương:</label>
-                <select id="chapterSelect"><option value="0">Chương 1</option></select>
+            <select id="chapterSelect"><option value="0">Chưa có chương</option></select>
+            
+            <div style="display: flex; align-items: center; gap: 5px;">
                 <label>Tốc độ:</label>
-                <div class="rate-group">
-                    <input type="range" id="rateInput" min="0.5" max="2" step="0.1" value="1">
-                    <span id="rateVal">1.0</span>x
-                </div>
-            </div>
-            
-            <div class="control-group">
-                <div class="timer-group">
-                    <label>Tự động dừng:</label>
-                    <input type="number" id="timer" min="0" max="120" value="0" style="width: 80px;"> phút
-                </div>
-                <button id="playBtn" class="btn btn-success">▶️ Phát</button>
-                <button id="stopBtn" class="btn btn-danger">⏹️ Dừng</button>
+                <input type="range" id="rateInput" min="0.5" max="2" step="0.1" value="1">
+                <span id="rateVal" style="font-weight:bold;">1.0</span>x
             </div>
         </div>
         
-        <div class="content">
-            <div class="sidebar">
-                <div class="status" id="status">Upload file TXT để bắt đầu</div>
-                <div style="margin-top: 20px;">
-                    <h3>🎵 Điều khiển Mobile:</h3>
-                    <p><strong>✅ Play/Pause:</strong> Notification bar</p>
-                    <p><strong>✅ Next/Prev:</strong> Click câu</p>
-                    <p><strong>✅ Không pause</strong> khi ẩn app</p>
-                </div>
-            </div>
-            <div class="main" id="displayBox">
-                <div style="text-align: center; padding: 100px; color: #999;">
-                    Upload file TXT để hiển thị nội dung...
-                </div>
+        <div class="main" id="displayBox">
+            <div style="text-align: center; color: #999; margin-top: 50px;">
+                Vui lòng upload file truyện TXT để bắt đầu...
             </div>
         </div>
     </div>
 
-    <!-- Mobile Notification -->
-    <div id="notification">
-        👆 Tab vào để điều khiển | <span id="notiStatus">Đang phát</span>
+    <!-- BOTTOM PLAYER (NHACCUATUI STYLE) -->
+    <div class="bottom-player">
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+        </div>
+        
+        <div class="player-controls">
+            <div class="track-info">
+                <img id="coverArt" src="https://cdn-icons-png.flaticon.com/512/3844/3844721.png" alt="Cover">
+                <div class="track-text">
+                    <h4 id="trackTitle">Chưa có truyện</h4>
+                    <p id="trackChap">Chương --</p>
+                </div>
+            </div>
+            
+            <div class="control-buttons">
+                <button class="btn-icon" id="btnPrev">⏮</button>
+                <button class="btn-icon btn-play" id="btnPlayPause">▶</button>
+                <button class="btn-icon" id="btnNext">⏭</button>
+            </div>
+            
+            <div class="extra-controls">
+                Hẹn giờ: 
+                <select id="timerSelect" style="padding: 5px; border-radius: 5px;">
+                    <option value="0">Tắt</option>
+                    <option value="15">15 Phút</option>
+                    <option value="30">30 Phút</option>
+                    <option value="60">60 Phút</option>
+                </select>
+            </div>
+        </div>
     </div>
 
     <script>
-        // ===== SUPER MOBILE BACKGROUND FIX =====
         const synth = window.speechSynthesis;
-        let currentSentences = [];
+        let currentParagraphs = [];
         let chapters = { '0': '' };
         let curChapIdx = 0;
-        let curSentIdx = 0;
+        let curParaIdx = 0;
         let isReading = false;
         let sleepTimer = null;
-        let currentFileName = '';
-        let audioContext = null;
-        let isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        let keepAliveInterval = null;
+        let currentFileName = 'Truyện Audio';
         
-        // ✅ 1. AUDIO IM LẶNG + VISUALIZER (giống Nhaccuatui)
-        const silentAudio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAo');
-        silentAudio.loop = true;
-        silentAudio.volume = 0.01; // ✅ Tăng nhẹ volume để browser detect
-        silentAudio.preload = 'auto';
-        
-        // ✅ 2. Web Audio API cho Mobile Background
-        function initAudioContext() {
-            try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                oscillator.frequency.value = 0; // Silent
-                gainNode.gain.value = 0;
-                oscillator.start();
-            } catch(e) {
-                console.log('AudioContext not supported');
-            }
-        }
+        const bgAudio = document.getElementById('bgAudio');
+        bgAudio.volume = 0.01; // Âm lượng cực nhỏ để lừa hệ điều hành
 
-        // DOM elements (giữ nguyên)
+        // DOM Elements
         const fileInput = document.getElementById('fileInput');
         const fileUpload = document.getElementById('fileUpload');
-        const fileNameEl = document.getElementById('fileName');
-        const fileSizeEl = document.getElementById('fileSize');
-        const progressBar = document.getElementById('progressBar');
-        const progressFill = document.getElementById('progressFill');
         const chapterSelect = document.getElementById('chapterSelect');
         const displayBox = document.getElementById('displayBox');
-        const rateInput = document.getElementById('rateInput');
-        const playBtn = document.getElementById('playBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const status = document.getElementById('status');
-        const notification = document.getElementById('notification');
-        const notiStatus = document.getElementById('notiStatus');
+        
+        // Player Elements
+        const btnPlayPause = document.getElementById('btnPlayPause');
+        const btnNext = document.getElementById('btnNext');
+        const btnPrev = document.getElementById('btnPrev');
+        const progressFill = document.getElementById('progressFill');
+        const trackTitle = document.getElementById('trackTitle');
+        const trackChap = document.getElementById('trackChap');
+        const coverArt = document.getElementById('coverArt');
 
-        // ===== FILE UPLOAD 100MB (giữ nguyên) =====
-        fileInput.addEventListener('change', handleFile);
-        fileUpload.addEventListener('click', () => fileInput.click());
-        // Drag & drop events giữ nguyên...
-
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
+        // ===== 1. XỬ LÝ UPLOAD FILE =====
+        fileUpload.onclick = () => fileInput.click();
+        fileInput.onchange = handleFile;
 
         function handleFile() {
             const file = fileInput.files[0];
             if (!file) return;
-
-            if (file.size > 100 * 1024 * 1024) {
-                alert(`❌ File quá lớn! Tối đa 100MB\n${formatFileSize(file.size)}`);
-                return;
-            }
-
-            if (!file.name.toLowerCase().endsWith('.txt')) {
-                alert('❌ Chỉ hỗ trợ .TXT!');
-                return;
-            }
-
-            fileNameEl.textContent = file.name;
-            fileSizeEl.textContent = formatFileSize(file.size);
-            status.textContent = 'Đang đọc file...';
-            status.className = 'status loading';
-            progressBar.style.display = 'block';
+            currentFileName = file.name.replace('.txt', '');
+            document.getElementById('fileName').textContent = file.name;
+            trackTitle.textContent = currentFileName;
 
             const reader = new FileReader();
-            reader.onprogress = (e) => {
-                if (e.lengthComputable) {
-                    const percent = (e.loaded / e.total) * 100;
-                    progressFill.style.width = percent + '%';
-                }
-            };
             reader.onload = (e) => {
-                progressFill.style.width = '100%';
-                setTimeout(() => {
-                    progressBar.style.display = 'none';
-                    parseChapters(e.target.result);
-                    currentFileName = file.name;
-                    status.textContent = `✅ ${file.name}`;
-                    loadChapter(0);
-                }, 500);
+                parseChapters(e.target.result);
+                loadChapter(0);
+                updateMediaSession();
             };
             reader.readAsText(file);
         }
 
+        // ===== 2. TÁCH CHƯƠNG VÀ ĐOẠN VĂN =====
         function parseChapters(text) {
-            const chapterRegex = /(?:Chương|Chapter|CHƯƠNG|C)(\s*[:\-]?\s*)?(\d+)/gi;
-            let match, chapterList = [], lastIndex = 0;
+            const chapterRegex = /(?:Chương|Chapter|CHƯƠNG)\s*(\d+)/gi;
+            let match;
+            const chapterList = [];
+            let lastIndex = 0;
 
             while ((match = chapterRegex.exec(text)) !== null) {
-                const chapterNum = parseInt(match[2]) - 1;
+                const chapterNum = parseInt(match[1]) - 1;
                 const start = match.index;
                 if (chapterList.length === 0) chapterList[0] = text.substring(0, start).trim();
                 if (chapterNum === chapterList.length) {
@@ -262,79 +217,192 @@
                 }
             }
             chapterList.push(text.substring(lastIndex).trim());
-
+            
             chapters = {};
-            chapterList.forEach((content, i) => {
-                if (content && content.length > 50) {
-                    chapters[i.toString()] = content;
-                }
-            });
-
             chapterSelect.innerHTML = '';
-            Object.keys(chapters).forEach((key) => {
-                const opt = document.createElement('option');
-                opt.value = key;
-                opt.textContent = `Chương ${parseInt(key) + 1}`;
-                chapterSelect.appendChild(opt);
+            chapterList.forEach((content, i) => {
+                if (content.length > 50) { // Bỏ qua chương quá ngắn/lỗi
+                    chapters[i] = content;
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = `Chương ${i + 1}`;
+                    chapterSelect.appendChild(opt);
+                }
             });
         }
 
-        // ===== MOBILE BACKGROUND SUPER FIX =====
-        chapterSelect.onchange = (e) => loadChapter(parseInt(e.target.value));
-        rateInput.oninput = (e) => document.getElementById('rateVal').innerText = e.target.value;
+        function loadChapter(idx) {
+            curChapIdx = idx;
+            chapterSelect.value = idx;
+            trackChap.textContent = `Chương ${idx + 1}`;
+            
+            // Chia theo ĐOẠN VĂN (newline) thay vì câu (dấu chấm) để đọc ngầm mượt hơn
+            currentParagraphs = chapters[idx].split('\n').map(s => s.trim()).filter(s => s.length > 10);
+            curParaIdx = 0;
+            displayParagraphs();
+            updateProgress();
+            updateMediaSession();
+        }
 
-        playBtn.onclick = async () => {
-            if (Object.keys(chapters).length === 0) return alert("Upload TXT trước!");
+        function displayParagraphs() {
+            displayBox.innerHTML = '';
+            currentParagraphs.forEach((s, i) => {
+                const div = document.createElement('div');
+                div.id = `p-${i}`;
+                div.className = 'paragraph';
+                div.innerText = s;
+                div.onclick = () => { curParaIdx = i; playAudio(); };
+                displayBox.appendChild(div);
+            });
+            scrollToCurrent();
+        }
 
-            // ✅ MOBILE FIX: Request audio focus
-            try {
-                await silentAudio.play();
-                if (audioContext && audioContext.state === 'suspended') {
-                    await audioContext.resume();
-                }
-            } catch(e) {
-                console.log('Mobile autoplay blocked - user gesture required');
+        // ===== 3. LOGIC ĐỌC TRUYỆN (TTS) VÀ CHẠY NGẦM =====
+        function playAudio() {
+            if (currentParagraphs.length === 0) return alert('Vui lòng tải file truyện lên trước!');
+            
+            isReading = true;
+            btnPlayPause.textContent = '⏸';
+            coverArt.classList.add('playing');
+            
+            // Kích hoạt thẻ Audio ngầm (Bắt buộc phải gọi bằng thao tác người dùng)
+            bgAudio.play().catch(e => console.log('Audio bị chặn', e));
+
+            // Setup Hẹn giờ tắt
+            const timerVal = parseInt(document.getElementById('timerSelect').value);
+            clearTimeout(sleepTimer);
+            if (timerVal > 0) {
+                sleepTimer = setTimeout(() => { pauseAudio(); alert("Đã hết thời gian hẹn giờ!"); }, timerVal * 60000);
             }
 
-            isReading = true;
-            playBtn.classList.add('btn-playing');
-            playBtn.textContent = '⏸️ Tạm dừng';
-            status.textContent = `▶️ ${currentFileName} - Chương ${curChapIdx + 1}`;
-            status.className = 'status playing';
-            notiStatus.textContent = 'Đang phát';
-            notification.style.display = 'block';
-            showNotification();
+            // HACK: Tránh lỗi Google TTS ngắt sau 15 giây trên Android/iOS
+            clearInterval(keepAliveInterval);
+            keepAliveInterval = setInterval(() => {
+                if (isReading && synth.speaking) {
+                    synth.pause();
+                    synth.resume();
+                }
+            }, 14000); // Mỗi 14 giây
 
-            const mins = parseInt(document.getElementById('timer').value);
-            if (mins > 0) sleepTimer = setTimeout(stopReading, mins * 60000);
-            
             speak();
-        };
+        }
 
-        stopBtn.onclick = stopReading;
-
-        function stopReading() {
+        function pauseAudio() {
             isReading = false;
             synth.cancel();
-            silentAudio.pause();
-            playBtn.classList.remove('btn-playing');
-            playBtn.textContent = '▶️ Phát';
-            status.textContent = '⏸️ Đã dừng';
-            status.className = 'status paused';
-            notiStatus.textContent = 'Đã dừng';
-            clearTimeout(sleepTimer);
+            bgAudio.pause();
+            clearInterval(keepAliveInterval);
+            btnPlayPause.textContent = '▶';
+            coverArt.classList.remove('playing');
         }
 
-        // ✅ VISIBILITY CHANGE - Giữ audio chạy
-        document.addEventListener('visibilitychange', () => {
-            if (isReading && document.hidden) {
-                // Resume audio context khi tab ẩn
-                if (audioContext && audioContext.state === 'suspended') {
-                    audioContext.resume();
-                }
-                silentAudio.play().catch(() => {});
-            }
-        });
+        function speak() {
+            if (!isReading) return;
 
-        // ✅ PAGE SHOW - Resume khi quay lại
-        window.add
+            // Đọc hết chương -> Chuyển chương tiếp theo
+            if (curParaIdx >= currentParagraphs.length) {
+                if (chapters[curChapIdx + 1]) {
+                    loadChapter(curChapIdx + 1);
+                    playAudio();
+                } else {
+                    pauseAudio(); // Hết truyện
+                }
+                return;
+            }
+
+            synth.cancel();
+            let utter = new SpeechSynthesisUtterance(currentParagraphs[curParaIdx]);
+            utter.lang = 'vi-VN';
+            utter.rate = parseFloat(document.getElementById('rateInput').value);
+
+            utter.onstart = () => {
+                document.querySelectorAll('.paragraph').forEach(el => el.classList.remove('highlight'));
+                const curEl = document.getElementById(`p-${curParaIdx}`);
+                if (curEl) curEl.classList.add('highlight');
+                scrollToCurrent();
+                updateProgress();
+            };
+
+            utter.onend = () => {
+                if (isReading) {
+                    curParaIdx++;
+                    speak();
+                }
+            };
+            
+            // Lỗi fallback
+            utter.onerror = (e) => {
+                console.log("Lỗi TTS:", e);
+                if (isReading && e.error !== 'interrupted' && e.error !== 'canceled') {
+                    curParaIdx++; speak(); 
+                }
+            };
+
+            synth.speak(utter);
+        }
+
+        // ===== 4. CÁC HÀM BỔ TRỢ GIAO DIỆN =====
+        function scrollToCurrent() {
+            const el = document.getElementById(`p-${curParaIdx}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function updateProgress() {
+            if (currentParagraphs.length === 0) return;
+            const percent = (curParaIdx / currentParagraphs.length) * 100;
+            progressFill.style.width = percent + '%';
+        }
+
+        // Bắt sự kiện click thanh tiến trình
+        document.getElementById('progressBar').onclick = (e) => {
+            if (currentParagraphs.length === 0) return;
+            const rect = e.target.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const percent = clickX / rect.width;
+            curParaIdx = Math.floor(percent * currentParagraphs.length);
+            if (isReading) playAudio(); else updateProgress();
+        };
+
+        document.getElementById('rateInput').oninput = (e) => {
+            document.getElementById('rateVal').innerText = e.target.value;
+            if (isReading) playAudio(); // Khởi động lại với tốc độ mới
+        };
+
+        chapterSelect.onchange = (e) => {
+            loadChapter(parseInt(e.target.value));
+            if (isReading) playAudio();
+        };
+
+        btnPlayPause.onclick = () => isReading ? pauseAudio() : playAudio();
+        
+        btnNext.onclick = () => {
+            if (curParaIdx < currentParagraphs.length - 1) { curParaIdx++; if(isReading) playAudio(); }
+            else if (chapters[curChapIdx + 1]) { loadChapter(curChapIdx + 1); if(isReading) playAudio(); }
+        };
+
+        btnPrev.onclick = () => {
+            if (curParaIdx > 0) { curParaIdx--; if(isReading) playAudio(); }
+            else if (curChapIdx > 0) { loadChapter(curChapIdx - 1); if(isReading) playAudio(); }
+        };
+
+        // ===== 5. TÍCH HỢP MEDIA SESSION (LOCK SCREEN) =====
+        function updateMediaSession() {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: `Chương ${curChapIdx + 1}`,
+                    artist: currentFileName,
+                    album: 'Truyện Audio',
+                    artwork: [
+                        { src: 'https://cdn-icons-png.flaticon.com/512/3844/3844721.png', sizes: '512x512', type: 'image/png' }
+                    ]
+                });
+
+                navigator.mediaSession.setActionHandler('play', playAudio);
+                navigator.mediaSession.setActionHandler('pause', pauseAudio);
+                navigator.mediaSession.setActionHandler('previoustrack', btnPrev.onclick);
+                navigator.mediaSession.setActionHandler('nexttrack', btnNext.onclick);
+            }
+        }
+    </script>
+</body>
+</html>
