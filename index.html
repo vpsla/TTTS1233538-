@@ -3,89 +3,229 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Truyện Audio - Phát Nền</title>
+    <title>Truyện Audio - Hoài My (Edge TTS)</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             min-height: 100vh; 
-            padding-bottom: 120px; /* Chừa chỗ cho Bottom Player */
+            padding-bottom: 120px;
         }
         .container { max-width: 1000px; margin: 20px auto; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; }
         
-        .header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; text-align: center; }
+        .header { 
+            background: linear-gradient(135deg, #667eea, #764ba2); 
+            color: white; 
+            padding: 20px; 
+            text-align: center; 
+        }
         .header h1 { font-size: 2em; margin-bottom: 5px; }
+        .header p { opacity: 0.9; font-size: 1.1em; }
         
-        .controls { padding: 20px; background: #fff; border-bottom: 1px solid #eee; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: center;}
+        .controls { 
+            padding: 20px; 
+            background: #fff; 
+            border-bottom: 1px solid #eee; 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 15px; 
+            align-items: center; 
+            justify-content: center;
+        }
         
-        select, input, button { padding: 10px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; outline: none; }
+        select, input, button { 
+            padding: 10px 15px; 
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+            font-size: 15px; 
+            outline: none; 
+            transition: 0.3s;
+        }
+        select:focus, input:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
         
         /* File Upload */
         .file-upload { 
-            width: 100%; text-align: center; cursor: pointer; border: 2px dashed #667eea; 
-            padding: 30px; border-radius: 15px; background: #f8f9ff; transition: 0.3s;
+            width: 100%; 
+            max-width: 300px;
+            text-align: center; 
+            cursor: pointer; 
+            border: 2px dashed #667eea; 
+            padding: 30px; 
+            border-radius: 15px; 
+            background: #f8f9ff; 
+            transition: 0.3s;
         }
-        .file-upload:hover { background: #e8f0ff; border-color: #5a67d8; }
+        .file-upload:hover { background: #e8f0ff; border-color: #5a67d8; transform: translateY(-2px); }
         .file-name { margin-top: 10px; font-weight: bold; color: #667eea; }
         
-        /* Nội dung truyện */
-        .main { padding: 20px; height: 60vh; overflow-y: auto; background: #fff; line-height: 1.8; font-size: 18px; }
-        .paragraph { 
-            padding: 10px; margin-bottom: 10px; border-radius: 10px; cursor: pointer; transition: 0.3s;
+        /* Voice Selection */
+        .voice-select {
+            background: linear-gradient(135deg, #667eea, #764ba2) !important;
+            color: white !important;
+            padding: 12px 20px !important;
+            border-radius: 10px !important;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            border: none !important;
         }
-        .paragraph:hover { background: #f0f0f0; }
+        .voice-select:hover { transform: scale(1.02); }
+        
+        /* Nội dung truyện */
+        .main { 
+            padding: 20px; 
+            height: 60vh; 
+            overflow-y: auto; 
+            background: #fff; 
+            line-height: 1.8; 
+            font-size: 18px; 
+        }
+        .paragraph { 
+            padding: 15px; 
+            margin-bottom: 10px; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            transition: 0.3s;
+            border-left: 3px solid transparent;
+        }
+        .paragraph:hover { background: #f0f8ff; border-left-color: #667eea; }
         .paragraph.highlight { 
-            background: #e3f2fd; color: #1565c0; font-weight: bold;
-            border-left: 4px solid #1976d2;
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb) !important;
+            color: #1565c0; 
+            font-weight: bold;
+            border-left: 5px solid #1976d2 !important;
+            box-shadow: 0 4px 12px rgba(25, 118, 210, 0.2);
         }
         
-        /* =========================================
-           BOTTOM PLAYER GIAO DIỆN NHƯ NHACCUATUI 
-           ========================================= */
+        /* Bottom Player */
         .bottom-player {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
-            padding: 10px 20px; z-index: 1000;
-            display: flex; flex-direction: column; align-items: center;
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            width: 100%;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 -5px 30px rgba(0,0,0,0.15);
+            padding: 15px 20px; 
+            z-index: 1000;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
         }
-        .progress-container { width: 100%; max-width: 800px; margin-bottom: 10px; }
+        .progress-container { width: 100%; max-width: 800px; margin-bottom: 12px; }
         .progress-bar { 
-            width: 100%; height: 6px; background: #ddd; border-radius: 3px; cursor: pointer; overflow: hidden;
+            width: 100%; 
+            height: 6px; 
+            background: #e0e0e0; 
+            border-radius: 3px; 
+            cursor: pointer; 
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
         }
-        .progress-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s; }
+        .progress-fill { 
+            width: 0%; 
+            height: 100%; 
+            background: linear-gradient(90deg, #667eea, #764ba2); 
+            transition: width 0.3s ease;
+            border-radius: 3px;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+        }
         
         .player-controls {
-            display: flex; width: 100%; max-width: 800px; justify-content: space-between; align-items: center;
+            display: flex; 
+            width: 100%; 
+            max-width: 800px; 
+            justify-content: space-between; 
+            align-items: center;
         }
-        .track-info { display: flex; align-items: center; gap: 15px; flex: 1; }
-        .track-info img { width: 50px; height: 50px; border-radius: 10px; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.2); animation: spin 10s linear infinite; animation-play-state: paused;}
+        .track-info { 
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+            flex: 1; 
+        }
+        .track-info img { 
+            width: 55px; 
+            height: 55px; 
+            border-radius: 12px; 
+            object-fit: cover; 
+            box-shadow: 0 6px 15px rgba(0,0,0,0.2); 
+            animation: spin 12s linear infinite; 
+            animation-play-state: paused;
+        }
         .track-info img.playing { animation-play-state: running; }
-        .track-text h4 { margin: 0; font-size: 16px; color: #333; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;}
-        .track-text p { margin: 0; font-size: 13px; color: #777; }
+        .track-text h4 { 
+            margin: 0; 
+            font-size: 16px; 
+            color: #333; 
+            display: -webkit-box; 
+            -webkit-line-clamp: 1; 
+            -webkit-box-orient: vertical; 
+            overflow: hidden;
+            font-weight: 600;
+        }
+        .track-text p { 
+            margin: 0; 
+            font-size: 13px; 
+            color: #666; 
+        }
         
-        .control-buttons { display: flex; align-items: center; gap: 20px; }
-        .btn-icon { background: none; border: none; font-size: 24px; cursor: pointer; color: #333; transition: 0.2s; }
-        .btn-icon:hover { color: #667eea; transform: scale(1.1); }
-        .btn-play { font-size: 40px; color: #667eea; }
+        .control-buttons { 
+            display: flex; 
+            align-items: center; 
+            gap: 25px; 
+        }
+        .btn-icon { 
+            background: none; 
+            border: none; 
+            font-size: 26px; 
+            cursor: pointer; 
+            color: #555; 
+            transition: all 0.2s; 
+            padding: 8px;
+            border-radius: 50%;
+        }
+        .btn-icon:hover { 
+            color: #667eea; 
+            transform: scale(1.15); 
+            background: rgba(102, 126, 234, 0.1);
+        }
+        .btn-play { 
+            font-size: 42px; 
+            color: #667eea !important; 
+            padding: 12px;
+        }
+        .btn-play:hover { transform: scale(1.1); }
         
-        .extra-controls { flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 10px; font-size: 14px;}
+        .extra-controls { 
+            flex: 1; 
+            display: flex; 
+            justify-content: flex-end; 
+            align-items: center; 
+            gap: 12px; 
+            font-size: 14px;
+            color: #666;
+        }
         
         @keyframes spin { 100% { transform: rotate(360deg); } }
+        .loading { text-align: center; color: #666; font-style: italic; padding: 20px; }
 
         @media (max-width: 768px) {
+            .controls { flex-direction: column; }
+            .file-upload { width: 100%; max-width: none; }
             .track-text h4 { font-size: 14px; }
-            .extra-controls { display: none; } /* Ẩn bớt trên mobile */
-            .control-buttons { gap: 15px; }
-            .btn-play { font-size: 35px; }
+            .track-text p { font-size: 12px; }
+            .extra-controls { display: none; }
+            .control-buttons { gap: 18px; }
+            .btn-play { font-size: 36px; }
+            .main { height: 50vh; }
         }
     </style>
 </head>
 <body>
 
-    <!-- THẺ AUDIO CHẠY NGẦM ĐỂ GIỮ HỆ ĐIỀU HÀNH KHÔNG ĐÓNG BĂNG TAB -->
+    <!-- Background audio để tránh tab sleep -->
     <audio id="bgAudio" loop preload="auto">
         <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAo" type="audio/wav">
     </audio>
@@ -93,53 +233,55 @@
     <div class="container">
         <div class="header">
             <h1>📚 Truyện Audio Pro</h1>
+            <p>🎤 Giọng Hoài My Neural (Edge TTS) - Chất lượng cao</p>
         </div>
         
         <div class="controls">
             <div class="file-upload" id="fileUpload">
-                <div>📁 Nhấn hoặc kéo thả file TXT vào đây</div>
+                <div>📁 Kéo thả hoặc click để upload file TXT</div>
                 <input type="file" id="fileInput" accept=".txt" style="display: none;">
-                <div class="file-name" id="fileName">Chưa chọn file nào</div>
+                <div class="file-name" id="fileName">Chưa chọn file</div>
             </div>
             
-            <div class="settings-group">
-                <div class="setting-item">
-                    <label>📖 Chương:</label>
-                    <select id="chapterSelect"><option value="0">Chưa có chương</option></select>
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
+                <div class="voice-select" id="voiceSelect">
+                    🎤 Hoài My Neural
                 </div>
                 
-                <div class="setting-item">
-                    <label>⚡ Tốc độ:</label>
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <input type="range" id="rateInput" min="0.5" max="2" step="0.1" value="1">
-                        <span id="rateVal" style="font-weight:bold; color: #1976d2;">1.0</span>x
+                <div style="display: flex; flex-direction: column; gap: 5px; min-width: 120px;">
+                    <label style="font-size: 13px; color: #666;">⚡ Tốc độ:</label>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <input type="range" id="rateInput" min="0.8" max="1.8" step="0.1" value="1.1">
+                        <span id="rateVal" style="font-weight:bold; color: #1976d2; min-width: 30px;">1.1</span>x
                     </div>
                 </div>
 
-                <div class="setting-item">
-                    <label>⏰ Hẹn giờ:</label>
+                <div style="display: flex; flex-direction: column; gap: 5px; min-width: 100px;">
+                    <label style="font-size: 13px; color: #666;">⏰ Hẹn giờ:</label>
                     <select id="timerSelect">
                         <option value="0">Tắt</option>
-                        <option value="15">15 Phút</option>
-                        <option value="30">30 Phút</option>
-                        <option value="60">60 Phút</option>
-                        <option value="120">120 Phút</option>
+                        <option value="15">15 phút</option>
+                        <option value="30">30 phút</option>
+                        <option value="60">1 giờ</option>
+                        <option value="120">2 giờ</option>
                     </select>
                 </div>
             </div>
         </div>
         
         <div class="main" id="displayBox">
-            <div style="text-align: center; color: #999; margin-top: 50px;">
-                Vui lòng upload file truyện TXT để bắt đầu...
+            <div class="loading">
+                👆 Vui lòng upload file truyện TXT để bắt đầu nghe giọng Hoài My...
             </div>
         </div>
     </div>
 
-    <!-- BOTTOM PLAYER (NHACCUATUI STYLE) -->
+    <!-- Bottom Player -->
     <div class="bottom-player">
         <div class="progress-container">
-            <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
         </div>
         
         <div class="player-controls">
@@ -147,122 +289,203 @@
                 <img id="coverArt" src="https://cdn-icons-png.flaticon.com/512/3844/3844721.png" alt="Cover">
                 <div class="track-text">
                     <h4 id="trackTitle">Chưa có truyện</h4>
-                    <p id="trackChap">Chương --</p>
+                    <p id="trackChap">Chương -- | Hoài My Neural</p>
                 </div>
             </div>
             
             <div class="control-buttons">
-                <button class="btn-icon" id="btnPrev">⏮</button>
-                <button class="btn-icon btn-play" id="btnPlayPause">▶</button>
-                <button class="btn-icon" id="btnNext">⏭</button>
+                <button class="btn-icon" id="btnPrev" title="Chương trước">⏮</button>
+                <button class="btn-icon btn-play" id="btnPlayPause" title="Play/Pause">▶</button>
+                <button class="btn-icon" id="btnNext" title="Chương sau">⏭</button>
             </div>
             
             <div class="extra-controls">
-                Hẹn giờ: 
-                <select id="timerSelect" style="padding: 5px; border-radius: 5px;">
-                    <option value="0">Tắt</option>
-                    <option value="15">15 Phút</option>
-                    <option value="30">30 Phút</option>
-                    <option value="60">60 Phút</option>
-                </select>
+                <span id="statusText">Sẵn sàng nghe</span>
             </div>
         </div>
     </div>
 
     <script>
-        const synth = window.speechSynthesis;
+        // ===== EDGE TTS ENGINE =====
+        class EdgeTTS {
+            constructor() {
+                this.isReady = false;
+                this.init();
+            }
+
+            async init() {
+                try {
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 5000);
+                    
+                    const response = await fetch('https://api.edgetts.net/v1/speak', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            input: 'Kiểm tra',
+                            voice: 'vi-VN-HoaiMyNeural',
+                            rate: '1.0'
+                        }),
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeout);
+                    
+                    if (response.ok) {
+                        this.isReady = true;
+                        document.getElementById('statusText').textContent = 'Hoài My Neural ✓';
+                        console.log('✅ Edge TTS Hoài My sẵn sàng');
+                    }
+                } catch(e) {
+                    console.log('⚠️ Edge TTS không khả dụng, dùng Web Speech');
+                }
+            }
+
+            async speak(text, rate = 1.1, onEndCallback) {
+                if (!this.isReady) {
+                    return this.fallback(text, rate, onEndCallback);
+                }
+
+                try {
+                    const response = await fetch('https://api.edgetts.net/v1/speak', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            input: text.slice(0, 400), // Giới hạn độ dài
+                            voice: 'vi-VN-HoaiMyNeural',
+                            rate: Math.max(0.5, Math.min(2.0, rate * 0.85)).toFixed(1),
+                            pitch: '1.0'
+                        })
+                    });
+
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                    const arrayBuffer = await response.arrayBuffer();
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                    
+                    const source = audioContext.createBufferSource();
+                    source.buffer = audioBuffer;
+                    source.connect(audioContext.destination);
+                    
+                    source.onended = onEndCallback;
+                    source.start(0);
+                    
+                    return { source, type: 'edge' };
+                } catch(e) {
+                    console.log('Edge TTS failed:', e);
+                    return this.fallback(text, rate, onEndCallback);
+                }
+            }
+
+            fallback(text, rate, onEndCallback) {
+                const synth = window.speechSynthesis;
+                const utter = new SpeechSynthesisUtterance(text);
+                utter.lang = 'vi-VN';
+                utter.rate = rate;
+                
+                // Chọn giọng Việt tốt nhất
+                const voices = synth.getVoices();
+                const vietVoice = voices.find(v => 
+                    v.lang.startsWith('vi') || 
+                    (v.lang.includes('VN') && v.name.includes('Microsoft'))
+                ) || voices.find(v => v.lang.startsWith('vi'));
+                
+                if (vietVoice) utter.voice = vietVoice;
+                
+                utter.onend = onEndCallback;
+                synth.speak(utter);
+                
+                return { utter, type: 'web' };
+            }
+        }
+
+        // ===== APP STATE =====
+        const edgeTTS = new EdgeTTS();
         let currentParagraphs = [];
         let chapters = { '0': '' };
         let curChapIdx = 0;
         let curParaIdx = 0;
         let isReading = false;
         let sleepTimer = null;
-        let keepAliveInterval = null;
+        let currentAudio = null;
         let currentFileName = 'Truyện Audio';
-        
-        const bgAudio = document.getElementById('bgAudio');
-        bgAudio.volume = 0.01; // Âm lượng cực nhỏ để lừa hệ điều hành
 
         // DOM Elements
-        const fileInput = document.getElementById('fileInput');
-        const fileUpload = document.getElementById('fileUpload');
-        const chapterSelect = document.getElementById('chapterSelect');
-        const displayBox = document.getElementById('displayBox');
-        
-        // Player Elements
-        const btnPlayPause = document.getElementById('btnPlayPause');
-        const btnNext = document.getElementById('btnNext');
-        const btnPrev = document.getElementById('btnPrev');
-        const progressFill = document.getElementById('progressFill');
-        const trackTitle = document.getElementById('trackTitle');
-        const trackChap = document.getElementById('trackChap');
-        const coverArt = document.getElementById('coverArt');
+        const elements = {
+            fileInput: document.getElementById('fileInput'),
+            fileUpload: document.getElementById('fileUpload'),
+            chapterSelect: document.getElementById('chapterSelect'),
+            displayBox: document.getElementById('displayBox'),
+            btnPlayPause: document.getElementById('btnPlayPause'),
+            btnNext: document.getElementById('btnNext'),
+            btnPrev: document.getElementById('btnPrev'),
+            progressFill: document.getElementById('progressFill'),
+            trackTitle: document.getElementById('trackTitle'),
+            trackChap: document.getElementById('trackChap'),
+            coverArt: document.getElementById('coverArt'),
+            statusText: document.getElementById('statusText'),
+            rateInput: document.getElementById('rateInput'),
+            rateVal: document.getElementById('rateVal'),
+            timerSelect: document.getElementById('timerSelect'),
+            progressBar: document.getElementById('progressBar'),
+            bgAudio: document.getElementById('bgAudio')
+        };
+        elements.bgAudio.volume = 0.01;
 
-// ===== 1. XỬ LÝ UPLOAD FILE (ĐÃ FIX LỖI) =====
+        // ===== FILE HANDLER =====
+        elements.fileUpload.addEventListener('click', () => elements.fileInput.click());
+        elements.fileInput.addEventListener('change', handleFile);
 
-// Sửa lỗi click bị lặp vòng (Event Bubbling)
-fileUpload.addEventListener('click', (e) => {
-    if (e.target !== fileInput) {
-        fileInput.click();
-    }
-});
+        ['dragover', 'dragenter'].forEach(event => {
+            elements.fileUpload.addEventListener(event, e => {
+                e.preventDefault();
+                e.stopPropagation();
+                elements.fileUpload.style.background = '#e3f2fd';
+                elements.fileUpload.style.borderColor = '#1976d2';
+            });
+        });
 
-fileInput.addEventListener('change', handleFile);
+        ['dragleave', 'drop'].forEach(event => {
+            elements.fileUpload.addEventListener(event, e => {
+                e.preventDefault();
+                e.stopPropagation();
+                elements.fileUpload.style.background = '#f8f9ff';
+                elements.fileUpload.style.borderColor = '#667eea';
+            });
+        });
 
-// Thêm lại tính năng Kéo Thả file (Drag & Drop)
-fileUpload.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    fileUpload.style.background = '#e8f0ff';
-    fileUpload.style.borderColor = '#1976d2';
-});
+        elements.fileUpload.addEventListener('drop', e => {
+            if (e.dataTransfer.files[0]) {
+                elements.fileInput.files = e.dataTransfer.files;
+                handleFile();
+            }
+        });
 
-fileUpload.addEventListener('dragleave', (e) => {
-    e.preventDefault();
-    fileUpload.style.background = '#f8f9ff';
-    fileUpload.style.borderColor = '#667eea';
-});
+        function handleFile() {
+            const file = elements.fileInput.files[0];
+            if (!file || !file.name.toLowerCase().endsWith('.txt')) {
+                if (file) alert('❌ Chỉ hỗ trợ file .TXT!');
+                elements.fileInput.value = '';
+                return;
+            }
 
-fileUpload.addEventListener('drop', (e) => {
-    e.preventDefault();
-    fileUpload.style.background = '#f8f9ff';
-    fileUpload.style.borderColor = '#667eea';
-    
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        fileInput.files = e.dataTransfer.files;
-        handleFile();
-    }
-});
+            currentFileName = file.name.replace(/\.txt$/i, '');
+            document.getElementById('fileName').textContent = file.name;
+            elements.trackTitle.textContent = currentFileName;
 
-function handleFile() {
-    const file = fileInput.files[0];
-    if (!file) return;
-    
-    // Kiểm tra định dạng đuôi file
-    if (!file.name.toLowerCase().endsWith('.txt')) {
-        alert('Lỗi: Chỉ hỗ trợ đọc truyện từ file đuôi .TXT!');
-        fileInput.value = ''; // Reset input
-        return;
-    }
+            const reader = new FileReader();
+            reader.onload = e => {
+                parseChapters(e.target.result);
+                loadChapter(0);
+                updateMediaSession();
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
 
-    currentFileName = file.name.replace('.txt', '');
-    document.getElementById('fileName').textContent = file.name;
-    trackTitle.textContent = currentFileName;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        parseChapters(e.target.result);
-        loadChapter(0);
-        updateMediaSession();
-    };
-    reader.readAsText(file);
-}
-
-        // ===== 2. TÁCH CHƯƠNG VÀ ĐOẠN VĂN =====
+        // ===== CHAPTER PARSER =====
         function parseChapters(text) {
-            const chapterRegex = /(?:Chương|Chapter|CHƯƠNG)\s*(\d+)/gi;
-            let match;
-            const chapterList = [];
-            let lastIndex = 0;
+            const chapterRegex = /(?:Chương|Chapter|CHƯƠNG)\s*(\d+(?:\.\d+)?)/gi;
+            let match, chapterList = [], lastIndex = 0;
 
             while ((match = chapterRegex.exec(text)) !== null) {
                 const chapterNum = parseInt(match[1]) - 1;
@@ -276,25 +499,28 @@ function handleFile() {
             chapterList.push(text.substring(lastIndex).trim());
             
             chapters = {};
-            chapterSelect.innerHTML = '';
+            elements.chapterSelect.innerHTML = '';
             chapterList.forEach((content, i) => {
-                if (content.length > 50) { // Bỏ qua chương quá ngắn/lỗi
+                if (content.length > 100) {
                     chapters[i] = content;
                     const opt = document.createElement('option');
                     opt.value = i;
                     opt.textContent = `Chương ${i + 1}`;
-                    chapterSelect.appendChild(opt);
+                    elements.chapterSelect.appendChild(opt);
                 }
             });
         }
 
         function loadChapter(idx) {
             curChapIdx = idx;
-            chapterSelect.value = idx;
-            trackChap.textContent = `Chương ${idx + 1}`;
+            elements.chapterSelect.value = idx;
+            elements.trackChap.textContent = `Chương ${idx + 1} | Hoài My Neural`;
             
-            // Chia theo ĐOẠN VĂN (newline) thay vì câu (dấu chấm) để đọc ngầm mượt hơn
-            currentParagraphs = chapters[idx].split('\n').map(s => s.trim()).filter(s => s.length > 10);
+            currentParagraphs = chapters[idx]
+                .split(/\n+/)
+                .map(s => s.trim())
+                .filter(s => s.length > 15 && !/^\s*$/.test(s));
+            
             curParaIdx = 0;
             displayParagraphs();
             updateProgress();
@@ -302,153 +528,169 @@ function handleFile() {
         }
 
         function displayParagraphs() {
-            displayBox.innerHTML = '';
-            currentParagraphs.forEach((s, i) => {
+            elements.displayBox.innerHTML = '';
+            currentParagraphs.forEach((text, i) => {
                 const div = document.createElement('div');
                 div.id = `p-${i}`;
                 div.className = 'paragraph';
-                div.innerText = s;
-                div.onclick = () => { curParaIdx = i; playAudio(); };
-                displayBox.appendChild(div);
+                div.textContent = text;
+                div.onclick = () => { 
+                    curParaIdx = i; 
+                    if (isReading) speak(); 
+                    else updateProgress();
+                };
+                elements.displayBox.appendChild(div);
             });
+            if (currentParagraphs.length === 0) {
+                elements.displayBox.innerHTML = '<div class="loading">Chưa có nội dung chương...</div>';
+            }
             scrollToCurrent();
         }
 
-        // ===== 3. LOGIC ĐỌC TRUYỆN (TTS) VÀ CHẠY NGẦM =====
+        // ===== PLAYBACK ENGINE =====
         function playAudio() {
-            if (currentParagraphs.length === 0) return alert('Vui lòng tải file truyện lên trước!');
+            if (currentParagraphs.length === 0) {
+                alert('📖 Vui lòng upload file truyện trước!');
+                return;
+            }
             
             isReading = true;
-            btnPlayPause.textContent = '⏸';
-            coverArt.classList.add('playing');
-            
-            // Kích hoạt thẻ Audio ngầm (Bắt buộc phải gọi bằng thao tác người dùng)
-            bgAudio.play().catch(e => console.log('Audio bị chặn', e));
+            elements.btnPlayPause.textContent = '⏸';
+            elements.coverArt.classList.add('playing');
+            elements.statusText.textContent = 'Đang tải giọng Hoài My...';
 
-            // Setup Hẹn giờ tắt
-            const timerVal = parseInt(document.getElementById('timerSelect').value);
-            clearTimeout(sleepTimer);
-            if (timerVal > 0) {
-                sleepTimer = setTimeout(() => { pauseAudio(); alert("Đã hết thời gian hẹn giờ!"); }, timerVal * 60000);
-            }
+            // Play background audio để tránh sleep
+            elements.bgAudio.play().catch(() => {});
 
-            // HACK: Tránh lỗi Google TTS ngắt sau 15 giây trên Android/iOS
-            clearInterval(keepAliveInterval);
-            keepAliveInterval = setInterval(() => {
-                if (isReading && synth.speaking) {
-                    synth.pause();
-                    synth.resume();
-                }
-            }, 14000); // Mỗi 14 giây
+            // Timer
+            setupTimer();
 
             speak();
         }
 
         function pauseAudio() {
             isReading = false;
-            synth.cancel();
-            bgAudio.pause();
+            if (currentAudio && currentAudio.type === 'web') {
+                window.speechSynthesis.cancel();
+            }
+            currentAudio = null;
             clearInterval(keepAliveInterval);
-            btnPlayPause.textContent = '▶';
-            coverArt.classList.remove('playing');
+            elements.btnPlayPause.textContent = '▶';
+            elements.coverArt.classList.remove('playing');
+            elements.statusText.textContent = 'Tạm dừng';
+            clearTimeout(sleepTimer);
         }
 
-        function speak() {
-            if (!isReading) return;
+        function setupTimer() {
+            const timerVal = parseInt(elements.timerSelect.value);
+            clearTimeout(sleepTimer);
+            if (timerVal > 0) {
+                sleepTimer = setTimeout(() => { 
+                    pauseAudio(); 
+                    alert(`⏰ Đã hết ${timerVal} phút hẹn giờ!`); 
+                }, timerVal * 60000);
+                elements.statusText.textContent += ` | Còn ${timerVal}m`;
+            }
+        }
 
-            // Đọc hết chương -> Chuyển chương tiếp theo
+        async function speak() {
+            if (!isReading || curParaIdx >= currentParagraphs.length) return;
+
+            // UI Update
+            elements.statusText.textContent = `Đoạn ${curParaIdx + 1}/${currentParagraphs.length}`;
+            highlightCurrent();
+            updateProgress();
+
+            const rate = parseFloat(elements.rateInput.value);
+            currentAudio = await edgeTTS.speak(
+                currentParagraphs[curParaIdx], 
+                rate, 
+                onParagraphEnd
+            );
+        }
+
+        function onParagraphEnd() {
+            if (!isReading) return;
+            
+            curParaIdx++;
             if (curParaIdx >= currentParagraphs.length) {
                 if (chapters[curChapIdx + 1]) {
                     loadChapter(curChapIdx + 1);
-                    playAudio();
-                } else {
-                    pauseAudio(); // Hết truyện
-                }
-                return;
-            }
-
-            synth.cancel();
-            let utter = new SpeechSynthesisUtterance(currentParagraphs[curParaIdx]);
-            utter.lang = 'vi-VN';
-            utter.rate = parseFloat(document.getElementById('rateInput').value);
-
-            utter.onstart = () => {
-                document.querySelectorAll('.paragraph').forEach(el => el.classList.remove('highlight'));
-                const curEl = document.getElementById(`p-${curParaIdx}`);
-                if (curEl) curEl.classList.add('highlight');
-                scrollToCurrent();
-                updateProgress();
-            };
-
-            utter.onend = () => {
-                if (isReading) {
-                    curParaIdx++;
                     speak();
+                } else {
+                    pauseAudio();
+                    elements.statusText.textContent = '🎉 Đã hết truyện!';
                 }
-            };
-            
-            // Lỗi fallback
-            utter.onerror = (e) => {
-                console.log("Lỗi TTS:", e);
-                if (isReading && e.error !== 'interrupted' && e.error !== 'canceled') {
-                    curParaIdx++; speak(); 
-                }
-            };
-
-            synth.speak(utter);
+            } else {
+                speak();
+            }
         }
 
-        // ===== 4. CÁC HÀM BỔ TRỢ GIAO DIỆN =====
+        function highlightCurrent() {
+            document.querySelectorAll('.paragraph').forEach(el => el.classList.remove('highlight'));
+            const el = document.getElementById(`p-${curParaIdx}`);
+            if (el) {
+                el.classList.add('highlight');
+                scrollToCurrent();
+            }
+        }
+
         function scrollToCurrent() {
             const el = document.getElementById(`p-${curParaIdx}`);
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
 
         function updateProgress() {
             if (currentParagraphs.length === 0) return;
-            const percent = (curParaIdx / currentParagraphs.length) * 100;
-            progressFill.style.width = percent + '%';
+            const percent = Math.min(100, (curParaIdx / currentParagraphs.length) * 100);
+            elements.progressFill.style.width = percent + '%';
         }
 
-        // Bắt sự kiện click thanh tiến trình
-        document.getElementById('progressBar').onclick = (e) => {
+        // ===== EVENT LISTENERS =====
+        elements.progressBar.onclick = e => {
             if (currentParagraphs.length === 0) return;
             const rect = e.target.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            const percent = clickX / rect.width;
+            const x = e.clientX - rect.left;
+            const percent = x / rect.width;
             curParaIdx = Math.floor(percent * currentParagraphs.length);
-            if (isReading) playAudio(); else updateProgress();
+            highlightCurrent();
+            if (isReading) speak();
         };
 
-        document.getElementById('rateInput').oninput = (e) => {
-            document.getElementById('rateVal').innerText = e.target.value;
-            if (isReading) playAudio(); // Khởi động lại với tốc độ mới
+        elements.rateInput.oninput = e => {
+            elements.rateVal.textContent = e.target.value;
         };
 
-        chapterSelect.onchange = (e) => {
+        elements.chapterSelect.onchange = e => {
             loadChapter(parseInt(e.target.value));
-            if (isReading) playAudio();
+            if (isReading) speak();
         };
 
-        btnPlayPause.onclick = () => isReading ? pauseAudio() : playAudio();
-        
-        btnNext.onclick = () => {
-            if (curParaIdx < currentParagraphs.length - 1) { curParaIdx++; if(isReading) playAudio(); }
-            else if (chapters[curChapIdx + 1]) { loadChapter(curChapIdx + 1); if(isReading) playAudio(); }
+        elements.timerSelect.onchange = setupTimer;
+
+        elements.btnPlayPause.onclick = () => isReading ? pauseAudio() : playAudio();
+        elements.btnNext.onclick = () => {
+            if (curParaIdx < currentParagraphs.length - 1) curParaIdx++;
+            else if (chapters[curChapIdx + 1]) loadChapter(curChapIdx + 1);
+            highlightCurrent();
+            if (isReading) speak();
+        };
+        elements.btnPrev.onclick = () => {
+            if (curParaIdx > 0) curParaIdx--;
+            else if (curChapIdx > 0) loadChapter(curChapIdx - 1);
+            highlightCurrent();
+            if (isReading) speak();
         };
 
-        btnPrev.onclick = () => {
-            if (curParaIdx > 0) { curParaIdx--; if(isReading) playAudio(); }
-            else if (curChapIdx > 0) { loadChapter(curChapIdx - 1); if(isReading) playAudio(); }
-        };
-
-        // ===== 5. TÍCH HỢP MEDIA SESSION (LOCK SCREEN) =====
+        // ===== MEDIA SESSION =====
         function updateMediaSession() {
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
-                    title: `Chương ${curChapIdx + 1}`,
-                    artist: currentFileName,
-                    album: 'Truyện Audio',
+                    title: `${currentFileName} - Chương ${curChapIdx + 1}`,
+                    artist: 'Hoài My Neural (Edge TTS)',
+                    album: 'Truyện Audio Pro',
                     artwork: [
                         { src: 'https://cdn-icons-png.flaticon.com/512/3844/3844721.png', sizes: '512x512', type: 'image/png' }
                     ]
@@ -456,10 +698,21 @@ function handleFile() {
 
                 navigator.mediaSession.setActionHandler('play', playAudio);
                 navigator.mediaSession.setActionHandler('pause', pauseAudio);
-                navigator.mediaSession.setActionHandler('previoustrack', btnPrev.onclick);
-                navigator.mediaSession.setActionHandler('nexttrack', btnNext.onclick);
+                navigator.mediaSession.setActionHandler('previoustrack', elements.btnPrev.onclick);
+                navigator.mediaSession.setActionHandler('nexttrack', elements.btnNext.onclick);
             }
         }
+
+        // ===== KEEP ALIVE =====
+        setInterval(() => {
+            if (isReading && document.visibilityState === 'visible') {
+                elements.bgAudio.play().catch(() => {});
+            }
+        }, 25000);
+
+        // ===== INIT =====
+        window.speechSynthesis.onvoiceschanged = updateMediaSession;
+        console.log('🚀 Truyện Audio Pro - Hoài My Neural đã sẵn sàng!');
     </script>
 </body>
 </html>
