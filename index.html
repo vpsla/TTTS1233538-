@@ -2,357 +2,184 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Truyện Audio Pro - Chạy Nền</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truyện Audio MP3 - Chạy Nền</title>
     <style>
+        :root { --primary: #007bff; --bg: #f4f7f6; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh; 
-            padding-bottom: 140px; 
-        }
-        .container { max-width: 1000px; margin: 20px auto; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); padding-bottom: 120px; }
+        .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .header { background: var(--primary); color: white; padding: 20px; text-align: center; }
+        .upload-section { padding: 20px; border-bottom: 1px solid #eee; text-align: center; }
+        #fileInput { display: none; }
+        .btn-upload { display: inline-block; padding: 12px 25px; background: var(--primary); color: white; border-radius: 25px; cursor: pointer; }
         
-        .header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; text-align: center; }
-        
-        .controls { padding: 20px; background: #fff; border-bottom: 1px solid #eee; }
-        
-        /* Upload Label - Fix 100% lỗi click trên Mobile */
-        .file-upload { 
-            display: block; width: 100%; text-align: center; cursor: pointer; 
-            border: 2px dashed #667eea; padding: 30px; border-radius: 15px; 
-            background: #f8f9ff; transition: 0.3s;
-        }
-        .file-upload:active { background: #e8f0ff; }
-        .file-name { margin-top: 10px; font-weight: bold; color: #667eea; }
+        .content-box { padding: 15px; height: 50vh; overflow-y: auto; line-height: 1.6; }
+        .segment { padding: 10px; border-radius: 8px; margin-bottom: 5px; cursor: pointer; color: #555; }
+        .segment.active { background: #e7f3ff; color: var(--primary); font-weight: bold; border-left: 4px solid var(--primary); }
 
-        .settings-group {
-            display: flex; flex-wrap: wrap; gap: 15px; width: 100%;
-            justify-content: space-between; align-items: center;
-            background: #f0f4f8; padding: 15px; border-radius: 12px; margin-top: 15px;
-        }
-        .setting-item { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: #444; }
-        .setting-item select, .setting-item input[type="range"] { 
-            padding: 8px; border: 1px solid #ddd; border-radius: 8px; outline: none; background: white;
-        }
-        
-        .main { padding: 20px; height: 50vh; overflow-y: auto; background: #fff; line-height: 1.8; font-size: 18px; scroll-behavior: smooth; }
-        .paragraph { padding: 12px; margin-bottom: 8px; border-radius: 10px; cursor: pointer; transition: 0.2s; }
-        .paragraph.highlight { background: #e3f2fd; color: #1565c0; font-weight: bold; border-left: 5px solid #1976d2; }
-        
-        /* BOTTOM PLAYER STYLE NHACCUATUI */
-        .bottom-player {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(15px);
-            box-shadow: 0 -5px 25px rgba(0,0,0,0.15); padding: 15px 20px; z-index: 1000;
-            display: flex; flex-direction: column; align-items: center;
-        }
-        .progress-container { width: 100%; max-width: 800px; padding: 10px 0; cursor: pointer; }
-        .progress-bar { width: 100%; height: 6px; background: #e0e0e0; border-radius: 10px; position: relative; overflow: hidden; }
-        .progress-fill { width: 0%; height: 100%; background: #667eea; position: absolute; left: 0; top: 0; transition: width 0.2s; }
-        
-        .player-controls { display: flex; width: 100%; max-width: 800px; justify-content: space-between; align-items: center; }
-        .track-info { display: flex; align-items: center; gap: 12px; flex: 1; }
-        .track-info img { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 2px solid #667eea; animation: spin 12s linear infinite; animation-play-state: paused; }
-        .track-info img.playing { animation-play-state: running; }
-        .track-text h4 { font-size: 15px; color: #333; margin: 0; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
-        .track-text p { font-size: 12px; color: #888; margin: 0; }
-        
-        .control-buttons { display: flex; align-items: center; gap: 20px; flex: 1; justify-content: flex-end; }
-        .btn-icon { background: none; border: none; font-size: 30px; cursor: pointer; color: #444; }
-        .btn-play { font-size: 50px; color: #667eea; }
-
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-
-        @media (max-width: 768px) {
-            .container { margin: 0; border-radius: 0; }
-            .settings-group { flex-direction: column; align-items: stretch; }
-            .track-info img { width: 45px; height: 45px; }
-            .control-buttons { gap: 15px; }
-            .btn-play { font-size: 40px; }
-        }
+        /* Bottom Player */
+        .player { position: fixed; bottom: 0; left: 0; width: 100%; background: white; padding: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; }
+        .controls { display: flex; gap: 30px; align-items: center; margin-top: 10px; }
+        .btn-ctrl { background: none; border: none; font-size: 30px; cursor: pointer; color: #333; }
+        #playBtn { font-size: 50px; color: var(--primary); }
+        .info { text-align: center; width: 100%; }
+        .info h4 { font-size: 16px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     </style>
 </head>
 <body>
 
-    <!-- THẺ AUDIO MỒI: Giữ kết nối MediaSession khi tắt màn hình -->
-    <audio id="bgAudio" loop preload="auto">
-        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAo" type="audio/wav">
-    </audio>
-
     <div class="container">
-        <div class="header"><h1>📚 Truyện Audio Pro</h1></div>
+        <div class="header"><h1>Truyện Audio MP3</h1></div>
         
-        <div class="controls">
-            <label class="file-upload" for="fileInput">
-                <div style="font-size: 16px;">📁 Nhấn để chọn file truyện .txt</div>
-                <input type="file" id="fileInput" accept=".txt" style="display: none;">
-                <div class="file-name" id="fileName">Chưa có file</div>
-            </label>
-            
-            <div class="settings-group">
-                <div class="setting-item">
-                    <label>📖 Chương:</label>
-                    <select id="chapterSelect"><option value="0">---</option></select>
-                </div>
-                <div class="setting-item">
-                    <label>⚡ Tốc độ:</label>
-                    <input type="range" id="rateInput" min="0.5" max="2" step="0.1" value="1.0">
-                    <span id="rateVal">1.0x</span>
-                </div>
-                <div class="setting-item">
-                    <label>⏰ Hẹn giờ:</label>
-                    <select id="timerSelect">
-                        <option value="0">Tắt</option>
-                        <option value="15">15'</option>
-                        <option value="30">30'</option>
-                        <option value="60">60'</option>
-                    </select>
-                </div>
-            </div>
+        <div class="upload-section">
+            <label class="btn-upload" for="fileInput">📁 Chọn file TXT truyện</label>
+            <input type="file" id="fileInput" accept=".txt">
+            <div id="fileName" style="margin-top:10px; font-size: 14px; color: #666;"></div>
         </div>
-        
-        <div class="main" id="displayBox">
-            <div style="text-align: center; color: #999; margin-top: 50px;">Tải file lên để bắt đầu nghe đọc truyện...</div>
+
+        <div id="contentBox" class="content-box">
+            <p style="text-align: center; color: #999;">Văn bản sẽ hiển thị ở đây...</p>
         </div>
     </div>
 
-    <!-- PLAYER -->
-    <div class="bottom-player">
-        <div class="progress-container" id="progressContainer">
-            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <!-- Hidden Audio Tag -->
+    <audio id="mainAudio"></audio>
+
+    <div class="player">
+        <div class="info">
+            <h4 id="trackTitle">Chưa có bài hát</h4>
+            <p id="trackStatus" style="font-size: 12px; color: #888;">Dừng</p>
         </div>
-        
-        <div class="player-controls">
-            <div class="track-info">
-                <img id="coverArt" src="https://cdn-icons-png.flaticon.com/512/3844/3844721.png">
-                <div class="track-text">
-                    <h4 id="trackTitle">Chưa có truyện</h4>
-                    <p id="trackChap">Chương --</p>
-                </div>
-            </div>
-            
-            <div class="control-buttons">
-                <button class="btn-icon" id="btnPrev">⏮</button>
-                <button class="btn-icon btn-play" id="btnPlayPause">▶</button>
-                <button class="btn-icon" id="btnNext">⏭</button>
-            </div>
+        <div class="controls">
+            <button class="btn-ctrl" onclick="prev()">⏮</button>
+            <button class="btn-ctrl" id="playBtn" onclick="togglePlay()">▶</button>
+            <button class="btn-ctrl" onclick="next()">⏭</button>
         </div>
     </div>
 
     <script>
-        const synth = window.speechSynthesis;
-        let currentParagraphs = [];
-        let chapters = {};
-        let curChapIdx = 0;
-        let curParaIdx = 0;
-        let isReading = false;
-        let sleepTimer = null;
-        let keepAliveInterval = null;
-        let currentFileName = "";
-
-        const bgAudio = document.getElementById('bgAudio');
-        bgAudio.volume = 0.1; // Volume nhỏ nhưng đủ để OS nhận diện media
-
-        // DOM
-        const fileInput = document.getElementById('fileInput');
-        const chapterSelect = document.getElementById('chapterSelect');
-        const displayBox = document.getElementById('displayBox');
-        const btnPlayPause = document.getElementById('btnPlayPause');
-        const progressFill = document.getElementById('progressFill');
+        const audio = document.getElementById('mainAudio');
+        const contentBox = document.getElementById('contentBox');
+        const playBtn = document.getElementById('playBtn');
         const trackTitle = document.getElementById('trackTitle');
-        const trackChap = document.getElementById('trackChap');
-        const coverArt = document.getElementById('coverArt');
+        const trackStatus = document.getElementById('trackStatus');
+        
+        let segments = [];
+        let currentIndex = 0;
+        let isPlaying = false;
 
-        // 1. UPLOAD & PARSE
-        fileInput.onchange = function() {
-            const file = this.files[0];
+        // 1. Xử lý File
+        document.getElementById('fileInput').onchange = function(e) {
+            const file = e.target.files[0];
             if (!file) return;
-            currentFileName = file.name.replace('.txt','');
             document.getElementById('fileName').innerText = file.name;
-            trackTitle.innerText = currentFileName;
+            trackTitle.innerText = file.name;
 
             const reader = new FileReader();
-            reader.onload = (e) => {
-                parseContent(e.target.result);
-                loadChapter(0);
-                this.value = ""; // Reset để chọn lại cùng file được
+            reader.onload = function(event) {
+                const text = event.target.result;
+                // Chia văn bản thành các câu ngắn (Google TTS giới hạn 200 ký tự)
+                segments = text.split(/[.?!]+/g).map(s => s.trim()).filter(s => s.length > 2);
+                renderSegments();
+                currentIndex = 0;
+                loadSegment(currentIndex);
             };
-            reader.readAsText(file, "UTF-8");
+            reader.readAsText(file);
         };
 
-        function parseContent(text) {
-            const chapterRegex = /(?:Chương|Chapter|CHƯƠNG)\s*(\d+)/gi;
-            let parts = text.split(chapterRegex);
-            chapters = {};
-            chapterSelect.innerHTML = "";
+        function renderSegments() {
+            contentBox.innerHTML = '';
+            segments.forEach((s, i) => {
+                const div = document.createElement('div');
+                div.className = 'segment';
+                div.id = 'seg-' + i;
+                div.innerText = s;
+                div.onclick = () => { currentIndex = i; loadSegment(i); play(); };
+                contentBox.appendChild(div);
+            });
+        }
 
-            if (parts.length <= 1) {
-                chapters[0] = text;
-                addOption(0, "Toàn bộ truyện");
-            } else {
-                for (let i = 1; i < parts.length; i += 2) {
-                    let num = parts[i];
-                    let content = parts[i+1];
-                    chapters[num] = content;
-                    addOption(num, "Chương " + num);
-                }
+        // 2. Chuyển văn bản sang luồng MP3
+        function getTTSUrl(text) {
+            // Sử dụng Proxy Google Translate TTS (Miễn phí và trả về MP3 xịn)
+            return `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=vi&client=tw-ob`;
+        }
+
+        function loadSegment(index) {
+            if (index < 0 || index >= segments.length) return;
+            
+            // Xóa highlight cũ
+            document.querySelectorAll('.segment').forEach(el => el.classList.remove('active'));
+            const activeEl = document.getElementById('seg-' + index);
+            if (activeEl) {
+                activeEl.classList.add('active');
+                activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-        }
 
-        function addOption(val, text) {
-            const opt = document.createElement('option');
-            opt.value = val; opt.innerText = text;
-            chapterSelect.appendChild(opt);
-        }
-
-        function loadChapter(val) {
-            curChapIdx = val;
-            chapterSelect.value = val;
-            trackChap.innerText = "Chương " + val;
-            currentParagraphs = chapters[val].split('\n').map(s => s.trim()).filter(s => s.length > 5);
-            curParaIdx = 0;
-            renderParagraphs();
-            updateProgress();
+            audio.src = getTTSUrl(segments[index]);
             updateMediaSession();
         }
 
-        function renderParagraphs() {
-            displayBox.innerHTML = "";
-            currentParagraphs.forEach((p, i) => {
-                const div = document.createElement('div');
-                div.className = 'paragraph';
-                div.id = 'p-' + i;
-                div.innerText = p;
-                div.onclick = () => { curParaIdx = i; playTTS(); };
-                displayBox.appendChild(div);
-            });
+        // 3. Điều khiển Play/Pause
+        function togglePlay() {
+            if (isPlaying) pause(); else play();
         }
 
-        // 2. TTS LOGIC & BACKGROUND HACK
-        function playTTS() {
-            if (currentParagraphs.length === 0) return;
-            isReading = true;
-            btnPlayPause.innerText = "⏸";
-            coverArt.classList.add('playing');
-            
-            // Hack: Chạy audio mồi
-            bgAudio.play().then(() => {
+        function play() {
+            if (!audio.src) return;
+            audio.play().then(() => {
+                isPlaying = true;
+                playBtn.innerText = '⏸';
+                trackStatus.innerText = `Đang phát (${currentIndex + 1}/${segments.length})`;
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
-            }).catch(e => console.log("Cần tương tác để phát âm thanh"));
-
-            // Hẹn giờ
-            const mins = parseInt(document.getElementById('timerSelect').value);
-            clearTimeout(sleepTimer);
-            if(mins > 0) sleepTimer = setTimeout(() => { stopTTS(); alert("Hết giờ đọc!"); }, mins * 60000);
-
-            // Hack: Keep-alive (tránh ngắt sau 15s)
-            clearInterval(keepAliveInterval);
-            keepAliveInterval = setInterval(() => {
-                if(isReading && synth.speaking) { synth.pause(); synth.resume(); }
-            }, 14000);
-
-            speakParagraph();
+            }).catch(e => console.error("Lỗi phát:", e));
         }
 
-        function stopTTS() {
-            isReading = false;
-            synth.cancel();
-            bgAudio.pause();
-            btnPlayPause.innerText = "▶";
-            coverArt.classList.remove('playing');
+        function pause() {
+            audio.pause();
+            isPlaying = false;
+            playBtn.innerText = '▶';
+            trackStatus.innerText = "Đã dừng";
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
-            clearInterval(keepAliveInterval);
         }
 
-        function speakParagraph() {
-            if (!isReading) return;
-            if (curParaIdx >= currentParagraphs.length) {
-                // Tự qua chương
-                let next = chapterSelect.selectedIndex + 1;
-                if(next < chapterSelect.length) {
-                    loadChapter(chapterSelect.options[next].value);
-                    playTTS();
-                } else { stopTTS(); }
-                return;
+        function next() {
+            if (currentIndex < segments.length - 1) {
+                currentIndex++;
+                loadSegment(currentIndex);
+                play();
             }
-
-            synth.cancel();
-            const utter = new SpeechSynthesisUtterance(currentParagraphs[curParaIdx]);
-            utter.lang = 'vi-VN';
-            utter.rate = parseFloat(document.getElementById('rateInput').value);
-
-            utter.onstart = () => {
-                document.querySelectorAll('.paragraph').forEach(el => el.classList.remove('highlight'));
-                const el = document.getElementById('p-' + curParaIdx);
-                if(el) {
-                    el.classList.add('highlight');
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-                updateProgress();
-                updateMediaSession();
-            };
-
-            utter.onend = () => { if(isReading) { curParaIdx++; speakParagraph(); } };
-            utter.onerror = () => { if(isReading) { curParaIdx++; speakParagraph(); } };
-
-            synth.speak(utter);
         }
 
-        // 3. MEDIA SESSION (HIỂN THỊ MÀN HÌNH KHÓA)
+        function prev() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                loadSegment(currentIndex);
+                play();
+            }
+        }
+
+        // 4. Tự động chuyển bài (Loop luồng MP3)
+        audio.onended = function() {
+            next();
+        };
+
+        // 5. Media Session (Quan trọng để điều khiển ngoài màn hình khóa)
         function updateMediaSession() {
-            if (!('mediaSession' in navigator)) return;
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: trackChap.innerText,
-                artist: currentFileName,
-                artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/3844/3844721.png', sizes: '512x512', type: 'image/png' }]
-            });
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: segments[currentIndex].substring(0, 50) + '...',
+                    artist: document.getElementById('fileName').innerText || "Truyện Audio",
+                    artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/3844/3844721.png', sizes: '512x512', type: 'image/png' }]
+                });
 
-            navigator.mediaSession.setActionHandler('play', playTTS);
-            navigator.mediaSession.setActionHandler('pause', stopTTS);
-            navigator.mediaSession.setActionHandler('previoustrack', () => document.getElementById('btnPrev').click());
-            navigator.mediaSession.setActionHandler('nexttrack', () => document.getElementById('btnNext').click());
+                navigator.mediaSession.setActionHandler('play', play);
+                navigator.mediaSession.setActionHandler('pause', pause);
+                navigator.mediaSession.setActionHandler('previoustrack', prev);
+                navigator.mediaSession.setActionHandler('nexttrack', next);
+            }
         }
-
-        // 4. UI EVENTS
-        btnPlayPause.onclick = () => isReading ? stopTTS() : playTTS();
-        
-        document.getElementById('btnNext').onclick = () => {
-            if(curParaIdx < currentParagraphs.length - 1) { curParaIdx++; isReading ? playTTS() : updateUI(); }
-        };
-        
-        document.getElementById('btnPrev').onclick = () => {
-            if(curParaIdx > 0) { curParaIdx--; isReading ? playTTS() : updateUI(); }
-        };
-
-        function updateUI() {
-            renderParagraphs();
-            const el = document.getElementById('p-' + curParaIdx);
-            if(el) el.classList.add('highlight');
-            updateProgress();
-        }
-
-        function updateProgress() {
-            const p = (curParaIdx / currentParagraphs.length) * 100;
-            progressFill.style.width = p + "%";
-        }
-
-        document.getElementById('progressContainer').onclick = function(e) {
-            const rect = this.getBoundingClientRect();
-            const percent = (e.clientX - rect.left) / rect.width;
-            curParaIdx = Math.floor(percent * currentParagraphs.length);
-            isReading ? playTTS() : updateUI();
-        };
-
-        document.getElementById('rateInput').oninput = function() {
-            document.getElementById('rateVal').innerText = this.value + "x";
-        };
-
-        chapterSelect.onchange = function() {
-            loadChapter(this.value);
-            if(isReading) playTTS();
-        };
     </script>
 </body>
 </html>
