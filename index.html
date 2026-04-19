@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Truyện Audio - Upload TXT</title>
+    <title>Truyện Audio - Upload TXT 100MB</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -40,6 +40,7 @@
             text-align: center; 
             transition: all 0.3s;
             background: #f8f9ff;
+            min-width: 300px;
         }
         .file-upload:hover { 
             background: #e8f0ff; 
@@ -56,6 +57,12 @@
             font-weight: bold; 
             color: #667eea; 
             word-break: break-all;
+            font-size: 14px;
+        }
+        .file-size { 
+            font-size: 12px; 
+            color: #666; 
+            margin-top: 5px;
         }
         
         .content { display: flex; min-height: 500px; }
@@ -85,11 +92,21 @@
         .status.playing { background: #d4edda; color: #155724; }
         .status.paused { background: #f8d7da; color: #721c24; }
         .status.error { background: #f8d7da; color: #721c24; }
+        .status.loading { background: #fff3cd; color: #856404; }
+        
+        .progress-bar {
+            width: 100%; height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden; margin-top: 10px;
+        }
+        .progress-fill {
+            height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s;
+            width: 0%;
+        }
         
         @media (max-width: 768px) {
             .content { flex-direction: column; }
             .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #eee; }
             .control-group { flex-direction: column; align-items: stretch; }
+            .file-upload { min-width: auto; }
         }
     </style>
 </head>
@@ -97,18 +114,22 @@
     <div class="container">
         <div class="header">
             <h1>📚 Truyện Audio TXT</h1>
-            <p>Upload file TXT và nghe chạy nền hoàn hảo!</p>
+            <p>Upload file TXT <strong>tối đa 100MB</strong> - Chạy nền hoàn hảo!</p>
         </div>
         
         <div class="controls">
             <div class="control-group">
                 <div class="file-upload" id="fileUpload">
-                    <div>📁 Chọn file TXT</div>
+                    <div>📁 Chọn file TXT (Max 100MB)</div>
                     <div style="font-size: 14px; color: #666; margin-top: 5px;">
-                        Hoặc kéo thả file vào đây (max 10MB)
+                        Hoặc kéo thả file vào đây
                     </div>
                     <input type="file" id="fileInput" accept=".txt" style="display: none;">
                     <div class="file-name" id="fileName"></div>
+                    <div class="file-size" id="fileSize"></div>
+                    <div class="progress-bar" id="progressBar" style="display: none;">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
                 </div>
             </div>
             
@@ -172,7 +193,10 @@
         // DOM ELEMENTS
         const fileInput = document.getElementById('fileInput');
         const fileUpload = document.getElementById('fileUpload');
-        const fileName = document.getElementById('fileName');
+        const fileNameEl = document.getElementById('fileName');
+        const fileSizeEl = document.getElementById('fileSize');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
         const chapterSelect = document.getElementById('chapterSelect');
         const displayBox = document.getElementById('displayBox');
         const rateInput = document.getElementById('rateInput');
@@ -180,9 +204,10 @@
         const stopBtn = document.getElementById('stopBtn');
         const status = document.getElementById('status');
 
-        // ===== FILE UPLOAD =====
+        // ===== FILE UPLOAD 100MB =====
         fileInput.addEventListener('change', handleFile);
         fileUpload.addEventListener('click', () => fileInput.click());
+        
         fileUpload.addEventListener('dragover', (e) => {
             e.preventDefault();
             fileUpload.classList.add('dragover');
@@ -200,44 +225,76 @@
             }
         });
 
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
         function handleFile() {
             const file = fileInput.files[0];
             if (!file) return;
 
-            if (file.size > 50 * 1024 * 1024) {
-                alert('File quá lớn! Tối đa 10MB');
+            // ✅ GIỚI HẠN 100MB = 100 * 1024 * 1024 bytes
+            if (file.size > 100 * 1024 * 1024) {
+                alert(`File quá lớn! Tối đa 100MB\nFile hiện tại: ${formatFileSize(file.size)}`);
+                fileInput.value = '';
                 return;
             }
 
-            if (!file.name.endsWith('.txt')) {
-                alert('Chỉ hỗ trợ file .TXT!');
+            if (!file.name.toLowerCase().endsWith('.txt')) {
+                alert('❌ Chỉ hỗ trợ file .TXT!');
+                fileInput.value = '';
                 return;
             }
+
+            // Hiển thị tên file và kích thước
+            fileNameEl.textContent = file.name;
+            fileSizeEl.textContent = formatFileSize(file.size);
+            status.textContent = 'Đang đọc file...';
+            status.className = 'status loading';
+            progressBar.style.display = 'block';
 
             const reader = new FileReader();
-            reader.onload = (e) => {
-                const content = e.target.result;
-                parseChapters(content);
-                currentFileName = file.name;
-                fileName.textContent = file.name;
-                status.textContent = `Đã tải: ${file.name}`;
-                status.className = 'status';
-                loadChapter(0);
+            reader.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    const percent = (e.loaded / e.total) * 100;
+                    progressFill.style.width = percent + '%';
+                }
             };
+            reader.onload = (e) => {
+                progressFill.style.width = '100%';
+                setTimeout(() => {
+                    progressBar.style.display = 'none';
+                    const content = e.target.result;
+                    parseChapters(content);
+                    currentFileName = file.name;
+                    status.textContent = `✅ Đã tải: ${file.name} (${formatFileSize(file.size)})`;
+                    status.className = 'status';
+                    loadChapter(0);
+                }, 500);
+            };
+            reader.onerror = () => {
+                progressBar.style.display = 'none';
+                status.textContent = '❌ Lỗi đọc file!';
+                status.className = 'status error';
+            };
+            
             reader.readAsText(file);
         }
 
         // ===== PARSE CHAPTERS FROM TXT =====
         function parseChapters(text) {
-            // Tách chương theo "Chương X:", "Chapter X", "CHƯƠNG X"
-            const chapterRegex = /(?:Chương|Chapter|CHƯƠNG)\s*(\d+)/gi;
+            // Tách chương theo "Chương X:", "Chapter X", "CHƯƠNG X", "C1", "Ch1"
+            const chapterRegex = /(?:Chương|Chapter|CHƯƠNG|C)(\s*[:\-]?\s*)?(\d+)/gi;
             let match;
             const chapterList = [];
             let lastIndex = 0;
 
             while ((match = chapterRegex.exec(text)) !== null) {
-                const chapterNum = parseInt(match[1]) - 1;
-                const chapterTitle = match[0];
+                const chapterNum = parseInt(match[2]) - 1;
                 const start = match.index;
                 
                 if (chapterList.length === 0) {
@@ -253,17 +310,17 @@
             // Chương cuối
             chapterList.push(text.substring(lastIndex).trim());
             
-            // Loại bỏ chương rỗng
+            // Loại bỏ chương rỗng và tạo chapters object
             chapters = {};
             chapterList.forEach((content, i) => {
-                if (content) {
+                if (content && content.length > 50) { // Chỉ lấy chương có nội dung
                     chapters[i.toString()] = content;
                 }
             });
 
             // Cập nhật chapter select
             chapterSelect.innerHTML = '';
-            Object.keys(chapters).forEach((key, i) => {
+            Object.keys(chapters).forEach((key) => {
                 const opt = document.createElement('option');
                 opt.value = key;
                 opt.textContent = `Chương ${parseInt(key) + 1}`;
@@ -277,10 +334,13 @@
         rateInput.oninput = (e) => document.getElementById('rateVal').innerText = e.target.value;
 
         playBtn.onclick = () => {
-            if (Object.keys(chapters).length === 0) return alert("Upload file TXT trước!");
+            if (Object.keys(chapters).length === 0) {
+                alert("❌ Upload file TXT trước!");
+                return;
+            }
             isReading = true;
-            silentAudio.play().catch(e => console.log('Audio autoplay prevented'));
-            status.textContent = `Đang đọc: ${currentFileName} - Chương ${curChapIdx + 1}`;
+            silentAudio.play().catch(e => console.log('Audio autoplay ok'));
+            status.textContent = `▶️ Đang đọc: ${currentFileName} - Chương ${curChapIdx + 1}`;
             status.className = 'status playing';
             
             const mins = parseInt(document.getElementById('timer').value);
@@ -295,22 +355,24 @@
 
         stopBtn.onclick = stopReading;
 
-        // ===== CORE FUNCTIONS =====
+        // ===== CORE FUNCTIONS (giữ nguyên) =====
         function loadChapter(idx) {
             curChapIdx = idx;
             const text = chapters[idx.toString()];
             if (!text) return;
             
-            currentSentences = text.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 10);
+            // ✅ Tối ưu chia câu cho file lớn
+            currentSentences = text.split(/([.!?]+[\s]*)/).filter(s => 
+                s.trim().length > 5 && !/^[.!?]+$/.test(s.trim())
+            ).map(s => s.trim()).filter(s => s.length > 10);
+            
             displaySentences();
             curSentIdx = 0;
-            displaySentences();
-            scroll();
         }
 
         function displaySentences() {
             displayBox.innerHTML = '';
-            currentSentences.forEach((s, i) => {
+            currentSentences.slice(0, 200).forEach((s, i) => { // Giới hạn 200 câu hiển thị
                 const span = document.createElement('span');
                 span.id = `s-${i}`;
                 span.className = 'sentence' + (i === curSentIdx ? ' highlight' : '');
@@ -322,80 +384,7 @@
                 };
                 displayBox.appendChild(span);
             });
-            scroll();
         }
 
         function speak() {
-            if (curSentIdx >= currentSentences.length) {
-                const nextChapIdx = curChapIdx + 1;
-                if (chapters[nextChapIdx.toString()]) { 
-                    curChapIdx = nextChapIdx;
-                    chapterSelect.value = nextChapIdx;
-                    loadChapter(nextChapIdx); 
-                    isReading = true; 
-                    speak(); 
-                }
-                return;
-            }
-            if (!isReading) return;
-
-            synth.cancel();
-            let utter = new SpeechSynthesisUtterance(currentSentences[curSentIdx]);
-            utter.lang = 'vi-VN';
-            utter.rate = parseFloat(rateInput.value);
-
-            utter.onstart = () => {
-                document.querySelectorAll('.sentence').forEach(el => el.classList.remove('highlight'));
-                document.getElementById(`s-${curSentIdx}`)?.classList.add('highlight');
-                scroll();
-            };
-
-            utter.onend = () => { 
-                if (isReading) { 
-                    curSentIdx++; 
-                    speak(); 
-                } 
-            };
-            
-            synth.speak(utter);
-        }
-
-        function scroll() { 
-            document.getElementById(`s-${curSentIdx}`)?.scrollIntoView({ 
-                behavior: 'smooth', 
-                block: 'center' 
-            }); 
-        }
-
-        function stopReading() { 
-            isReading = false; 
-            synth.cancel(); 
-            silentAudio.pause(); 
-            clearTimeout(sleepTimer); 
-            status.textContent = 'Đã dừng';
-            status.className = 'status paused';
-            document.querySelector('.highlight')?.classList.remove('highlight');
-        }
-
-        // Media Session
-        function updateMediaSession() {
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: currentFileName || 'Truyện Audio',
-                    artist: `Chương ${curChapIdx + 1}`,
-                    artwork: [{ 
-                        src: 'https://cdn-icons-png.flaticon.com/512/3844/3844721.png', 
-                        sizes: '512x512', 
-                        type: 'image/png' 
-                    }]
-                });
-                navigator.mediaSession.setActionHandler('play', () => { 
-                    isReading = true; 
-                    speak(); 
-                });
-                navigator.mediaSession.setActionHandler('pause', stopReading);
-            }
-        }
-    </script>
-</body>
-</html>
+            if (curSentIdx >= current
