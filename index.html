@@ -208,57 +208,64 @@
         const trackChap = document.getElementById('trackChap');
         const coverArt = document.getElementById('coverArt');
 
-        // ===== 1. XỬ LÝ UPLOAD FILE & DRAG DROP (ĐÃ FIX LỖI) =====
-        fileUpload.addEventListener('click', (e) => {
-            if (e.target !== fileInput) fileInput.click();
-        });
+// ===== 1. XỬ LÝ UPLOAD FILE (ĐÃ FIX LỖI) =====
 
-        fileUpload.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            fileUpload.style.background = '#e8f0ff';
-            fileUpload.style.borderColor = '#1976d2';
-        });
+// Sửa lỗi click bị lặp vòng (Event Bubbling)
+fileUpload.addEventListener('click', (e) => {
+    if (e.target !== fileInput) {
+        fileInput.click();
+    }
+});
 
-        fileUpload.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            fileUpload.style.background = '#f8f9ff';
-            fileUpload.style.borderColor = '#667eea';
-        });
+fileInput.addEventListener('change', handleFile);
 
-        fileUpload.addEventListener('drop', (e) => {
-            e.preventDefault();
-            fileUpload.style.background = '#f8f9ff';
-            fileUpload.style.borderColor = '#667eea';
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                fileInput.files = e.dataTransfer.files;
-                handleFile();
-            }
-        });
+// Thêm lại tính năng Kéo Thả file (Drag & Drop)
+fileUpload.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    fileUpload.style.background = '#e8f0ff';
+    fileUpload.style.borderColor = '#1976d2';
+});
 
-        fileInput.addEventListener('change', handleFile);
+fileUpload.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    fileUpload.style.background = '#f8f9ff';
+    fileUpload.style.borderColor = '#667eea';
+});
 
-        function handleFile() {
-            const file = fileInput.files[0];
-            if (!file) return;
-            
-            if (!file.name.toLowerCase().endsWith('.txt')) {
-                alert('Lỗi: Chỉ hỗ trợ đọc truyện từ file đuôi .TXT!');
-                fileInput.value = ''; 
-                return;
-            }
+fileUpload.addEventListener('drop', (e) => {
+    e.preventDefault();
+    fileUpload.style.background = '#f8f9ff';
+    fileUpload.style.borderColor = '#667eea';
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        fileInput.files = e.dataTransfer.files;
+        handleFile();
+    }
+});
 
-            currentFileName = file.name.replace('.txt', '');
-            document.getElementById('fileName').textContent = file.name;
-            trackTitle.textContent = currentFileName;
+function handleFile() {
+    const file = fileInput.files[0];
+    if (!file) return;
+    
+    // Kiểm tra định dạng đuôi file
+    if (!file.name.toLowerCase().endsWith('.txt')) {
+        alert('Lỗi: Chỉ hỗ trợ đọc truyện từ file đuôi .TXT!');
+        fileInput.value = ''; // Reset input
+        return;
+    }
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                parseChapters(e.target.result);
-                loadChapter(0);
-                updateMediaSession();
-            };
-            reader.readAsText(file);
-        }
+    currentFileName = file.name.replace('.txt', '');
+    document.getElementById('fileName').textContent = file.name;
+    trackTitle.textContent = currentFileName;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        parseChapters(e.target.result);
+        loadChapter(0);
+        updateMediaSession();
+    };
+    reader.readAsText(file);
+}
 
         // ===== 2. TÁCH CHƯƠNG VÀ ĐOẠN VĂN =====
         function parseChapters(text) {
