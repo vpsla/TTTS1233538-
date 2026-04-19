@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truyện Audio - Nghe truyện chạy nền</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; 
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); overflow: hidden; }
+        
+        .header { background: linear-gradient(135deg, #ff6b6b, #feca57); color: white; padding: 30px; text-align: center; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        
+        .controls { padding: 30px; background: #f8f9fa; border-bottom: 1px solid #eee; }
+        .control-group { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin-bottom: 20px; }
+        select, input, button { padding: 12px 20px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; transition: all 0.3s; }
+        select:focus, input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+        
+        .btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; cursor: pointer; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(102,126,234,0.3); }
+        .btn:active { transform: translateY(0); }
+        .btn-danger { background: linear-gradient(135deg, #ff6b6b, #ee5a52); }
+        .btn-success { background: linear-gradient(135deg, #51cf66, #40c057); }
+        
+        .content { display: flex; min-height: 500px; }
+        .sidebar { width: 300px; background: #f8f9fa; padding: 30px; border-right: 1px solid #eee; }
+        .main { flex: 1; padding: 30px; overflow-y: auto; max-height: 70vh; }
+        
+        .sentence { 
+            display: inline-block; padding: 8px 12px; margin: 4px 2px; 
+            background: #e9ecef; border-radius: 20px; cursor: pointer; 
+            transition: all 0.3s; font-size: 18px; line-height: 1.6;
+            user-select: none;
+        }
+        .sentence:hover { background: #dee2e6; transform: scale(1.02); }
+        .sentence.highlight { 
+            background: linear-gradient(135deg, #667eea, #764ba2) !important; 
+            color: white; 
+            box-shadow: 0 5px 15px rgba(102,126,234,0.4);
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        
+        .timer-group { display: flex; gap: 10px; align-items: center; }
+        .rate-group { display: flex; gap: 10px; align-items: center; }
+        #rateVal { font-weight: bold; color: #667eea; min-width: 40px; }
+        
+        .status { text-align: center; padding: 20px; background: #e9ecef; border-radius: 10px; margin-bottom: 20px; }
+        .status.playing { background: #d4edda; color: #155724; }
+        .status.paused { background: #f8d7da; color: #721c24; }
+        
+        @media (max-width: 768px) {
+            .content { flex-direction: column; }
+            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #eee; }
+            .control-group { flex-direction: column; align-items: stretch; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 Truyện Audio</h1>
+            <p>Nghe truyện chạy nền - Không bao giờ bị pause!</p>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>📖 Chọn truyện:</label>
+                <select id="bookSelect">
+                    <option value="">-- Chọn truyện --</option>
+                    <option value="truyen1">Truyện 1 - Hành Trình Vĩ Đại</option>
+                    <option value="truyen2">Truyện 2 - Bí Mật Cổ Xưa</option>
+                    <option value="truyen3">Truyện 3 - Cuộc Phiêu Lưu Kỳ Thú</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>📄 Chương:</label>
+                <select id="chapterSelect"></select>
+                <label>Tốc độ:</label>
+                <div class="rate-group">
+                    <input type="range" id="rateInput" min="0.5" max="2" step="0.1" value="1">
+                    <span id="rateVal">1.0</span>x
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div class="timer-group">
+                    <label>Tự động dừng sau:</label>
+                    <input type="number" id="timer" min="0" max="120" value="0" style="width: 80px;"> phút
+                </div>
+                <button id="playBtn" class="btn btn-success">▶️ Phát</button>
+                <button id="stopBtn" class="btn btn-danger">⏹️ Dừng</button>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="sidebar">
+                <div class="status" id="status">Chọn truyện để bắt đầu</div>
+                <div style="margin-top: 20px;">
+                    <h3>🎵 Điều khiển tai nghe:</h3>
+                    <p><strong>Play/Pause:</strong> Nút Play/Pause trên tai nghe</p>
+                    <p><strong>Next/Prev:</strong> Click vào câu để nhảy</p>
+                </div>
+            </div>
+            
+            <div class="main" id="displayBox">
+                <div style="text-align: center; padding: 100px; color: #999;">
+                    Chọn truyện và chương để hiển thị nội dung...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== KHỞI TẠO =====
+        const synth = window.speechSynthesis;
+        let currentSentences = [];
+        let chapters = {};
+        let curBookName = '';
+        let curChapIdx = 0;
+        let curSentIdx = 0;
+        let isReading = false;
+        let sleepTimer = null;
+        
+        // ✅ AUDIO IM LẶNG - GIỮ TAB ACTIVE
+        const silentAudio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAo');
+        silentAudio.loop = true;
+        silentAudio.volume = 0;
+        
+        // Dữ liệu mẫu truyện
+        const books = {
+            truyen1: {
+                title: "Hành Trình Vĩ Đại",
+                chapters: [
+                    "Ngày xưa ở một ngôi làng nhỏ có một cậu bé tên An rất thích phiêu lưu. Cậu mơ ước được khám phá thế giới rộng lớn bên ngoài. Mỗi buổi sáng An thức dậy và nhìn ra những ngọn núi xa xăm với niềm háo hức.",
+                    "Một ngày nọ An quyết định lên đường. Cậu mang theo chiếc ba lô cũ kỹ một ít bánh mì và bình nước. Trên con đường mòn dẫn ra khỏi làng An gặp chú chó nhỏ tên Mít.",
+                    "Họ cùng nhau đi qua khu rừng rậm rạp. Những tán cây cao vút che kín bầu trời. Tiếng chim hót líu lo vang vọng khắp nơi. An và Mít rất vui vẻ trên hành trình của mình."
+                ]
+            },
+            truyen2: {
+                title: "Bí Mật Cổ Xưa",
+                chapters: [
+                    "Trong một ngôi đền cổ kính giữa sa mạc có một bí mật được chôn giấu hàng ngàn năm. Lan một nhà khảo cổ trẻ tuổi đã dành cả đời để tìm kiếm ngôi đền này.",
+                    "Sau bao khó khăn Lan cuối cùng cũng tìm thấy lối vào. Những bức tường đá khắc đầy những ký tự lạ lùng phát sáng trong bóng tối. Tim Lan đập thình thịch vì hồi hộp.",
+                    "Bên trong ngôi đền là một kho báu không thể tưởng tượng. Nhưng điều quan trọng nhất là một cuốn sách cổ ghi lại những bí mật của nền văn minh đã mất."
+                ]
+            },
+            truyen3: {
+                title: "Cuộc Phiêu Lưu Kỳ Thú",
+                chapters: [
+                    "Bình và Linh là đôi bạn thân từ thuở nhỏ. Họ phát hiện ra một cánh cửa bí mật sau bức tường trường học cũ. Không ai biết cánh cửa đó dẫn đến đâu.",
+                    "Họ bước qua cánh cửa và rơi vào một thế giới kỳ lạ. Những cây biết nói những con vật biết nhảy múa và bầu trời có bảy màu sắc.",
+                    "Cuộc phiêu lưu của họ đầy những bất ngờ thú vị. Họ học được rằng đôi khi những điều kỳ diệu nhất lại ở ngay bên cạnh chúng ta."
+                ]
+            }
+        };
+
+        // ===== DOM ELEMENTS =====
+        const bookSelect = document.getElementById('bookSelect');
+        const chapterSelect = document.getElementById('chapterSelect');
+        const displayBox = document.getElementById('displayBox');
+        const rateInput = document.getElementById('rateInput');
+        const playBtn = document.getElementById('playBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const status = document.getElementById('status');
+
+        // ===== EVENTS =====
+        bookSelect.onchange = (e) => {
+            curBookName = e.target.value;
+            if (curBookName) {
+                chapters = books[curBookName];
+                chapterSelect.innerHTML = '';
+                chapters.chapters.forEach((_, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = `Chương ${i + 1}`;
+                    chapterSelect.appendChild(opt);
+                });
+                chapterSelect.value = 0;
+                loadChapter(0);
+            }
+        };
+
+        chapterSelect.onchange = (e) => loadChapter(parseInt(e.target.value));
+
+        rateInput.oninput = (e) => document.getElementById('rateVal').innerText = e.target.value;
+
+        playBtn.onclick = () => {
+            if (!curBookName) return alert("Chọn truyện!");
+            isReading = true;
+            silentAudio.play().catch(e => console.log('Audio autoplay prevented'));
+            status.textContent = `Đang đọc: ${curBookName} - Chương ${curChapIdx + 1}`;
+            status.className = 'status playing';
+            
+            const mins = parseInt(document.getElementById('timer').value);
+            if (mins > 0) {
+                sleepTimer = setTimeout(() => { 
+                    stopReading(); 
+                    alert("⏰ Hết giờ đọc!"); 
+                }, mins * 60000);
+            }
+            speak();
+        };
+
+        stopBtn.onclick = stopReading;
+
+        // ===== FUNCTIONS =====
+        function loadChapter(idx) {
+            curChapIdx = idx;
+            const text = chapters.chapters[idx];
+            currentSentences = text.split(/[.!?]+/).map(s => s.trim()).filter(s => s);
+            displaySentences();
+            curSentIdx = 0;
+            
+            // Khôi phục vị trí đã lưu
+            const savedPos = localStorage.getItem("pos_" + curBookName);
+            if (savedPos) {
+                const [savedChap, savedSent] = savedPos.split('_').map(Number);
+                if (savedChap === curChapIdx && savedSent < currentSentences.length) {
+                    curSentIdx = savedSent;
+                }
+            }
+            
+            displaySentences();
+            scroll();
+        }
+
+        function displaySentences() {
+            displayBox.innerHTML = '';
+            currentSentences.forEach((s, i) => {
+                const span = document.createElement('span');
+                span.id = `s-${i}`;
+                span.className = 'sentence' + (i === curSentIdx ? ' highlight' : '');
+                span.innerText = s + ' ';
+                span.onclick = () => { 
+                    curSentIdx = i; 
+                    isReading = true; 
+                    speak(); 
+                };
+                displayBox.appendChild(span);
+            });
+            scroll();
+        }
+
+        function speak() {
+            if (curSentIdx >= currentSentences.length) {
+                if (curChapIdx < chapters.chapters.length - 1) { 
+                    curChapIdx++; 
+                    chapterSelect.value = curChapIdx; 
+                    loadChapter(curChapIdx); 
+                    isReading = true; 
+                    speak(); 
+                }
+                return;
+            }
+            if (!isReading) return;
+
+            synth.cancel();
+            let utter = new SpeechSynthesisUtterance(currentSentences[curSentIdx]);
+            utter.lang = 'vi-VN';
+            utter.rate = parseFloat(rateInput.value);
+
+            utter.onstart = () => {
+                document.querySelectorAll('.sentence').forEach(el => el.classList.remove('highlight'));
+                document.getElementById(`s-${curSentIdx}`)?.classList.add('highlight');
+                scroll();
+                localStorage.setItem("pos_" + curBookName, `${curChapIdx}_${curSentIdx}`);
+                updateMediaSession();
+            };
+
+            utter.onend = () => { 
+                if (isReading) { 
+                    curSentIdx++; 
+                    speak(); 
+                } 
+            };
+            
+            synth.speak(utter);
+        }
+
+        function scroll() { 
+            document.getElementById(`s-${curSentIdx}`)?.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            }); 
+        }
+
+        function stopReading() { 
+            isReading = false; 
+            synth.cancel(); 
+            silentAudio.pause(); 
+            clearTimeout(sleepTimer); 
+            status.textContent = 'Đã dừng';
+            status.className = 'status paused';
+            document.querySelector('.highlight')?.classList.remove('highlight');
+        }
+
+        function updateMediaSession() {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: curBookName,
+                    artist: `Chương ${curChapIdx + 1}`,
+                    artwork: [{ 
+                        src: 'https://cdn-icons-png.flaticon.com/512/3844/3844721.png', 
+                        sizes: '512x512', 
+                        type: 'image/png' 
+                    }]
+                });
+                navigator.mediaSession.setActionHandler('play', () => { 
+                    isReading = true; 
+                    speak(); 
+                });
+                navigator.mediaSession.setActionHandler('pause', stopReading);
+                navigator.mediaSession.setActionHandler('previoustrack', () => {
+                    if (curSentIdx > 0) curSentIdx--;
+                    speak();
+                });
+                navigator.mediaSession.setActionHandler('nexttrack', () => {
+                    curSentIdx++;
+                    speak();
+                });
+            }
+        }
+
+        // Khôi phục vị trí khi load trang
+        window.addEventListener('load', () => {
+            const savedBook = localStorage.getItem('lastBook');
+            if (savedBook && books[savedBook]) {
+                bookSelect.value = savedBook;
+                bookSelect.dispatchEvent(new Event('change'));
+            }
+        });
+
+        // Lưu sách cuối cùng
+        bookSelect.addEventListener('change', () => {
+            if (curBookName) {
+                localStorage.setItem('lastBook', curBookName);
+            }
+        });
+    </script>
+</body>
+</html>
