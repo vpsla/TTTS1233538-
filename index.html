@@ -57,6 +57,7 @@
             transition: 0.3s;
         }
         .file-upload:hover { background: #e8f0ff; border-color: #5a67d8; transform: translateY(-2px); }
+        .file-upload.dragover { background: #e3f2fd !important; border-color: #1976d2 !important; }
         .file-name { margin-top: 10px; font-weight: bold; color: #667eea; }
         
         /* Voice Selection */
@@ -71,6 +72,14 @@
             border: none !important;
         }
         .voice-select:hover { transform: scale(1.02); }
+        
+        /* Chapter Select */
+        .chapter-select {
+            min-width: 140px;
+            background: linear-gradient(135deg, #f8f9ff, #e8f0ff);
+            border: 2px solid #667eea;
+            font-weight: 600;
+        }
         
         /* Nội dung truyện */
         .main { 
@@ -244,6 +253,10 @@
             </div>
             
             <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
+                <select id="chapterSelect" class="chapter-select" style="display: none;">
+                    <option value="0">Chương 1</option>
+                </select>
+                
                 <div class="voice-select" id="voiceSelect">
                     🎤 Hoài My Neural
                 </div>
@@ -350,7 +363,7 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            input: text.slice(0, 400), // Giới hạn độ dài
+                            input: text.slice(0, 400),
                             voice: 'vi-VN-HoaiMyNeural',
                             rate: Math.max(0.5, Math.min(2.0, rate * 0.85)).toFixed(1),
                             pitch: '1.0'
@@ -383,7 +396,6 @@
                 utter.lang = 'vi-VN';
                 utter.rate = rate;
                 
-                // Chọn giọng Việt tốt nhất
                 const voices = synth.getVoices();
                 const vietVoice = voices.find(v => 
                     v.lang.startsWith('vi') || 
@@ -409,8 +421,9 @@
         let sleepTimer = null;
         let currentAudio = null;
         let currentFileName = 'Truyện Audio';
+        let keepAliveInterval = null;
 
-        // DOM Elements
+         // DOM Elements
         const elements = {
             fileInput: document.getElementById('fileInput'),
             fileUpload: document.getElementById('fileUpload'),
@@ -428,7 +441,8 @@
             rateVal: document.getElementById('rateVal'),
             timerSelect: document.getElementById('timerSelect'),
             progressBar: document.getElementById('progressBar'),
-            bgAudio: document.getElementById('bgAudio')
+            bgAudio: document.getElementById('bgAudio'),
+            fileName: document.getElementById('fileName')
         };
         elements.bgAudio.volume = 0.01;
 
@@ -436,12 +450,12 @@
         elements.fileUpload.addEventListener('click', () => elements.fileInput.click());
         elements.fileInput.addEventListener('change', handleFile);
 
+        // Drag & Drop
         ['dragover', 'dragenter'].forEach(event => {
             elements.fileUpload.addEventListener(event, e => {
                 e.preventDefault();
                 e.stopPropagation();
-                elements.fileUpload.style.background = '#e3f2fd';
-                elements.fileUpload.style.borderColor = '#1976d2';
+                elements.fileUpload.classList.add('dragover');
             });
         });
 
@@ -449,35 +463,51 @@
             elements.fileUpload.addEventListener(event, e => {
                 e.preventDefault();
                 e.stopPropagation();
-                elements.fileUpload.style.background = '#f8f9ff';
-                elements.fileUpload.style.borderColor = '#667eea';
+                elements.fileUpload.classList.remove('dragover');
             });
         });
 
         elements.fileUpload.addEventListener('drop', e => {
-            if (e.dataTransfer.files[0]) {
-                elements.fileInput.files = e.dataTransfer.files;
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                elements.fileInput.files = files;
                 handleFile();
             }
         });
 
         function handleFile() {
             const file = elements.fileInput.files[0];
-            if (!file || !file.name.toLowerCase().endsWith('.txt')) {
-                if (file) alert('❌ Chỉ hỗ trợ file .TXT!');
+            if (!file) return;
+
+            if (!file.name.toLowerCase().endsWith('.txt')) {
+                alert('❌ Chỉ hỗ trợ file .TXT!');
                 elements.fileInput.value = '';
                 return;
             }
 
+            // UI Feedback
+            elements.fileName.textContent = `Đang đọc ${file.name}...`;
+            elements.statusText.textContent = 'Đang xử lý file...';
+
             currentFileName = file.name.replace(/\.txt$/i, '');
-            document.getElementById('fileName').textContent = file.name;
             elements.trackTitle.textContent = currentFileName;
 
             const reader = new FileReader();
             reader.onload = e => {
-                parseChapters(e.target.result);
-                loadChapter(0);
-                updateMediaSession();
+                try {
+                    parseChapters(e.target.result);
+                    loadChapter(0);
+                    elements.statusText.textContent = '✅ File đã sẵn sàng!';
+                    updateMediaSession();
+                } catch (error) {
+                    console.error('Lỗi parse file:', error);
+                    elements.displayBox.innerHTML = '<div class="loading">❌ Lỗi đọc file, vui lòng thử file khác!</div>';
+                    elements.statusText.textContent = 'Lỗi đọc file';
+                }
+            };
+            reader.onerror = () => {
+                alert('❌ Lỗi đọc file!');
+                elements.fileInput.value = '';
             };
             reader.readAsText(file, 'UTF-8');
         }
@@ -498,26 +528,35 @@
             }
             chapterList.push(text.substring(lastIndex).trim());
             
+            // Filter valid chapters
             chapters = {};
-            elements.chapterSelect.innerHTML = '';
-            chapterList.forEach((content, i) => {
-                if (content.length > 100) {
-                    chapters[i] = content;
-                    const opt = document.createElement('option');
-                    opt.value = i;
-                    opt.textContent = `Chương ${i + 1}`;
-                    elements.chapterSelect.appendChild(opt);
-                }
+            const validChapters = chapterList.filter(content => content.length > 100);
+            
+            validChapters.forEach((content, i) => {
+                chapters[i] = content;
             });
+            
+            // Update chapter select
+            elements.chapterSelect.innerHTML = '';
+            Object.keys(chapters).forEach(i => {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = `Chương ${parseInt(i) + 1}`;
+                elements.chapterSelect.appendChild(opt);
+            });
+            
+            elements.chapterSelect.style.display = Object.keys(chapters).length > 1 ? 'block' : 'none';
         }
 
         function loadChapter(idx) {
+            if (!chapters[idx]) return;
+            
             curChapIdx = idx;
             elements.chapterSelect.value = idx;
-            elements.trackChap.textContent = `Chương ${idx + 1} | Hoài My Neural`;
+            elements.trackChap.textContent = `Chương ${parseInt(idx) + 1} | Hoài My Neural`;
             
             currentParagraphs = chapters[idx]
-                .split(/\n+/)
+                .split(/\n\s*\n|\n{2,}/)
                 .map(s => s.trim())
                 .filter(s => s.length > 15 && !/^\s*$/.test(s));
             
@@ -529,6 +568,11 @@
 
         function displayParagraphs() {
             elements.displayBox.innerHTML = '';
+            if (currentParagraphs.length === 0) {
+                elements.displayBox.innerHTML = '<div class="loading">Chưa có nội dung chương...</div>';
+                return;
+            }
+
             currentParagraphs.forEach((text, i) => {
                 const div = document.createElement('div');
                 div.id = `p-${i}`;
@@ -536,14 +580,11 @@
                 div.textContent = text;
                 div.onclick = () => { 
                     curParaIdx = i; 
+                    highlightCurrent();
                     if (isReading) speak(); 
-                    else updateProgress();
                 };
                 elements.displayBox.appendChild(div);
             });
-            if (currentParagraphs.length === 0) {
-                elements.displayBox.innerHTML = '<div class="loading">Chưa có nội dung chương...</div>';
-            }
             scrollToCurrent();
         }
 
@@ -559,11 +600,11 @@
             elements.coverArt.classList.add('playing');
             elements.statusText.textContent = 'Đang tải giọng Hoài My...';
 
-            // Play background audio để tránh sleep
             elements.bgAudio.play().catch(() => {});
-
-            // Timer
             setupTimer();
+            keepAliveInterval = setInterval(() => {
+                if (isReading) elements.bgAudio.play().catch(() => {});
+            }, 25000);
 
             speak();
         }
@@ -572,6 +613,9 @@
             isReading = false;
             if (currentAudio && currentAudio.type === 'web') {
                 window.speechSynthesis.cancel();
+            }
+            if (currentAudio && currentAudio.type === 'edge' && currentAudio.source) {
+                currentAudio.source.stop();
             }
             currentAudio = null;
             clearInterval(keepAliveInterval);
@@ -584,19 +628,17 @@
         function setupTimer() {
             const timerVal = parseInt(elements.timerSelect.value);
             clearTimeout(sleepTimer);
-            if (timerVal > 0) {
+            if (timerVal > 0 && isReading) {
                 sleepTimer = setTimeout(() => { 
                     pauseAudio(); 
                     alert(`⏰ Đã hết ${timerVal} phút hẹn giờ!`); 
                 }, timerVal * 60000);
-                elements.statusText.textContent += ` | Còn ${timerVal}m`;
             }
         }
 
         async function speak() {
             if (!isReading || curParaIdx >= currentParagraphs.length) return;
 
-            // UI Update
             elements.statusText.textContent = `Đoạn ${curParaIdx + 1}/${currentParagraphs.length}`;
             highlightCurrent();
             updateProgress();
@@ -655,6 +697,7 @@
             const x = e.clientX - rect.left;
             const percent = x / rect.width;
             curParaIdx = Math.floor(percent * currentParagraphs.length);
+            curParaIdx = Math.max(0, Math.min(curParaIdx, currentParagraphs.length - 1));
             highlightCurrent();
             if (isReading) speak();
         };
@@ -672,14 +715,21 @@
 
         elements.btnPlayPause.onclick = () => isReading ? pauseAudio() : playAudio();
         elements.btnNext.onclick = () => {
-            if (curParaIdx < currentParagraphs.length - 1) curParaIdx++;
-            else if (chapters[curChapIdx + 1]) loadChapter(curChapIdx + 1);
+            if (curParaIdx < currentParagraphs.length - 1) {
+                curParaIdx++;
+            } else if (chapters[curChapIdx + 1]) {
+                loadChapter(curChapIdx + 1);
+            }
             highlightCurrent();
             if (isReading) speak();
         };
         elements.btnPrev.onclick = () => {
-            if (curParaIdx > 0) curParaIdx--;
-            else if (curChapIdx > 0) loadChapter(curChapIdx - 1);
+            if (curParaIdx > 0) {
+                curParaIdx--;
+            } else if (curChapIdx > 0) {
+                loadChapter(curChapIdx - 1);
+                curParaIdx = currentParagraphs.length - 1;
+            }
             highlightCurrent();
             if (isReading) speak();
         };
@@ -698,20 +748,23 @@
 
                 navigator.mediaSession.setActionHandler('play', playAudio);
                 navigator.mediaSession.setActionHandler('pause', pauseAudio);
-                navigator.mediaSession.setActionHandler('previoustrack', elements.btnPrev.onclick);
-                navigator.mediaSession.setActionHandler('nexttrack', elements.btnNext.onclick);
+                navigator.mediaSession.setActionHandler('previoustrack', () => elements.btnPrev.click());
+                navigator.mediaSession.setActionHandler('nexttrack', () => elements.btnNext.click());
             }
         }
 
-        // ===== KEEP ALIVE =====
-        setInterval(() => {
-            if (isReading && document.visibilityState === 'visible') {
-                elements.bgAudio.play().catch(() => {});
-            }
-        }, 25000);
-
         // ===== INIT =====
-        window.speechSynthesis.onvoiceschanged = updateMediaSession;
+        window.speechSynthesis.onvoiceschanged = () => {
+            updateMediaSession();
+        };
+
+        // Auto-resume khi focus tab
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && isReading) {
+                speak();
+            }
+        });
+
         console.log('🚀 Truyện Audio Pro - Hoài My Neural đã sẵn sàng!');
     </script>
 </body>
