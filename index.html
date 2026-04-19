@@ -2,126 +2,176 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Truyện Audio MP3 - Chạy Nền</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Truyện Audio MP3 - Nhaccuatui Style</title>
     <style>
-        :root { --primary: #007bff; --bg: #f4f7f6; }
+        :root { --primary-color: #2ecc71; --dark-bg: #1a1a1a; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); padding-bottom: 120px; }
-        .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .header { background: var(--primary); color: white; padding: 20px; text-align: center; }
-        .upload-section { padding: 20px; border-bottom: 1px solid #eee; text-align: center; }
-        #fileInput { display: none; }
-        .btn-upload { display: inline-block; padding: 12px 25px; background: var(--primary); color: white; border-radius: 25px; cursor: pointer; }
-        
-        .content-box { padding: 15px; height: 50vh; overflow-y: auto; line-height: 1.6; }
-        .segment { padding: 10px; border-radius: 8px; margin-bottom: 5px; cursor: pointer; color: #555; }
-        .segment.active { background: #e7f3ff; color: var(--primary); font-weight: bold; border-left: 4px solid var(--primary); }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding-bottom: 150px; }
 
-        /* Bottom Player */
-        .player { position: fixed; bottom: 0; left: 0; width: 100%; background: white; padding: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; }
-        .controls { display: flex; gap: 30px; align-items: center; margin-top: 10px; }
-        .btn-ctrl { background: none; border: none; font-size: 30px; cursor: pointer; color: #333; }
-        #playBtn { font-size: 50px; color: var(--primary); }
-        .info { text-align: center; width: 100%; }
-        .info h4 { font-size: 16px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* Header & Upload */
+        .header { background: linear-gradient(135deg, #2ecc71, #27ae60); color: white; padding: 30px 20px; text-align: center; clip-path: polygon(0 0, 100% 0, 100% 85%, 0 100%); }
+        .upload-area { margin: -40px 20px 20px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; }
+        .custom-upload { display: inline-block; padding: 12px 24px; background: var(--primary-color); color: white; border-radius: 30px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        #fileInput { display: none; }
+
+        /* Danh sách đoạn văn */
+        .story-container { padding: 10px 20px; }
+        .segment { padding: 15px; background: white; margin-bottom: 10px; border-radius: 10px; border-left: 5px solid transparent; transition: 0.2s; color: #444; font-size: 17px; line-height: 1.6; }
+        .segment.active { border-left-color: var(--primary-color); background: #eafff2; color: #27ae60; font-weight: 500; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+
+        /* Player cố định phía dưới (Giống Nhaccuatui) */
+        .player-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: white; box-shadow: 0 -5px 20px rgba(0,0,0,0.15); padding: 15px 20px; z-index: 1000; border-radius: 20px 20px 0 0; }
+        .progress-container { width: 100%; height: 4px; background: #eee; border-radius: 2px; margin-bottom: 15px; position: relative; overflow: hidden; }
+        .progress-fill { width: 0%; height: 100%; background: var(--primary-color); transition: width 0.3s; }
+        
+        .player-info { display: flex; align-items: center; gap: 15px; margin-bottom: 10px; }
+        .disc { width: 50px; height: 50px; background: url('https://cdn-icons-png.flaticon.com/512/3844/3844721.png') center/cover; border-radius: 50%; border: 2px solid #ddd; animation: rotate 10s linear infinite; animation-play-state: paused; }
+        .disc.playing { animation-play-state: running; }
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        .track-meta { flex: 1; overflow: hidden; }
+        .track-meta h4 { font-size: 16px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .track-meta p { font-size: 13px; color: #888; }
+
+        .player-controls { display: flex; justify-content: center; align-items: center; gap: 40px; }
+        .btn { background: none; border: none; cursor: pointer; font-size: 28px; color: #333; outline: none; }
+        #playBtn { font-size: 50px; color: var(--primary-color); }
+
+        @media (max-width: 480px) {
+            .player-controls { gap: 25px; }
+            .disc { display: none; }
+        }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <div class="header"><h1>Truyện Audio MP3</h1></div>
-        
-        <div class="upload-section">
-            <label class="btn-upload" for="fileInput">📁 Chọn file TXT truyện</label>
-            <input type="file" id="fileInput" accept=".txt">
-            <div id="fileName" style="margin-top:10px; font-size: 14px; color: #666;"></div>
-        </div>
+    <div class="header">
+        <h1>Truyện Audio MP3</h1>
+        <p>Hỗ trợ chạy nền & Màn hình khóa</p>
+    </div>
 
-        <div id="contentBox" class="content-box">
-            <p style="text-align: center; color: #999;">Văn bản sẽ hiển thị ở đây...</p>
+    <div class="upload-area">
+        <label class="custom-upload" for="fileInput">📁 Chọn File Truyện (.txt)</label>
+        <input type="file" id="fileInput" accept=".txt">
+        <p id="fileNameDisplay" style="margin-top: 10px; color: #777; font-size: 14px;"></p>
+    </div>
+
+    <div class="story-container" id="storyBox">
+        <p style="text-align: center; color: #999; margin-top: 30px;">Vui lòng tải file để hiển thị nội dung</p>
+    </div>
+
+    <!-- Thanh Player MP3 -->
+    <div class="player-bar">
+        <div class="progress-container">
+            <div class="progress-fill" id="progressBar"></div>
+        </div>
+        <div class="player-info">
+            <div class="disc" id="disc"></div>
+            <div class="track-meta">
+                <h4 id="uiTitle">Chưa có truyện</h4>
+                <p id="uiStatus">Dừng</p>
+            </div>
+        </div>
+        <div class="player-controls">
+            <button class="btn" onclick="goPrev()">⏮</button>
+            <button class="btn" id="playBtn" onclick="togglePlay()">▶</button>
+            <button class="btn" onclick="goNext()">⏭</button>
         </div>
     </div>
 
-    <!-- Hidden Audio Tag -->
-    <audio id="mainAudio"></audio>
-
-    <div class="player">
-        <div class="info">
-            <h4 id="trackTitle">Chưa có bài hát</h4>
-            <p id="trackStatus" style="font-size: 12px; color: #888;">Dừng</p>
-        </div>
-        <div class="controls">
-            <button class="btn-ctrl" onclick="prev()">⏮</button>
-            <button class="btn-ctrl" id="playBtn" onclick="togglePlay()">▶</button>
-            <button class="btn-ctrl" onclick="next()">⏭</button>
-        </div>
-    </div>
+    <!-- Audio Tag ẩn -->
+    <audio id="mainAudio" preload="auto"></audio>
 
     <script>
         const audio = document.getElementById('mainAudio');
-        const contentBox = document.getElementById('contentBox');
         const playBtn = document.getElementById('playBtn');
-        const trackTitle = document.getElementById('trackTitle');
-        const trackStatus = document.getElementById('trackStatus');
+        const storyBox = document.getElementById('storyBox');
+        const disc = document.getElementById('disc');
         
         let segments = [];
         let currentIndex = 0;
         let isPlaying = false;
+        let fileName = "";
 
-        // 1. Xử lý File
+        // ===== 1. ĐỌC FILE VÀ XỬ LÝ CHUYỂN VĂN BẢN (MISSING PART) =====
         document.getElementById('fileInput').onchange = function(e) {
             const file = e.target.files[0];
             if (!file) return;
-            document.getElementById('fileName').innerText = file.name;
-            trackTitle.innerText = file.name;
+            
+            fileName = file.name;
+            document.getElementById('fileNameDisplay').innerText = fileName;
+            document.getElementById('uiTitle').innerText = fileName;
 
             const reader = new FileReader();
             reader.onload = function(event) {
-                const text = event.target.result;
-                // Chia văn bản thành các câu ngắn (Google TTS giới hạn 200 ký tự)
-                segments = text.split(/[.?!]+/g).map(s => s.trim()).filter(s => s.length > 2);
-                renderSegments();
-                currentIndex = 0;
-                loadSegment(currentIndex);
+                const rawText = event.target.result;
+                processText(rawText);
             };
-            reader.readAsText(file);
+            reader.readAsText(file, "UTF-8");
         };
 
-        function renderSegments() {
-            contentBox.innerHTML = '';
-            segments.forEach((s, i) => {
+        function processText(text) {
+            // Bước quan trọng: Cắt văn bản theo dấu câu nhưng không được quá 200 ký tự (Giới hạn của Google)
+            // Regex này chia theo dấu chấm, chấm hỏi, chấm than và xuống dòng
+            const rawSegments = text.split(/([.?!]+|\n)/g);
+            segments = [];
+            let tempChunk = "";
+
+            rawSegments.forEach(part => {
+                if ((tempChunk + part).length < 180) {
+                    tempChunk += part;
+                } else {
+                    if (tempChunk.trim()) segments.push(tempChunk.trim());
+                    tempChunk = part;
+                }
+            });
+            if (tempChunk.trim()) segments.push(tempChunk.trim());
+
+            renderStory();
+            currentIndex = 0;
+            loadSegment(0);
+        }
+
+        function renderStory() {
+            storyBox.innerHTML = '';
+            segments.forEach((text, i) => {
                 const div = document.createElement('div');
                 div.className = 'segment';
-                div.id = 'seg-' + i;
-                div.innerText = s;
+                div.id = `seg-${i}`;
+                div.innerText = text;
                 div.onclick = () => { currentIndex = i; loadSegment(i); play(); };
-                contentBox.appendChild(div);
+                storyBox.appendChild(div);
             });
         }
 
-        // 2. Chuyển văn bản sang luồng MP3
+        // ===== 2. CHUYỂN SANG MP3 URL (GOOGLE TTS) =====
         function getTTSUrl(text) {
-            // Sử dụng Proxy Google Translate TTS (Miễn phí và trả về MP3 xịn)
+            // Sử dụng URL Google TTS chính thức giúp chạy ổn định trên thẻ <audio>
             return `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=vi&client=tw-ob`;
         }
 
         function loadSegment(index) {
             if (index < 0 || index >= segments.length) return;
             
-            // Xóa highlight cũ
+            // Cập nhật UI
             document.querySelectorAll('.segment').forEach(el => el.classList.remove('active'));
-            const activeEl = document.getElementById('seg-' + index);
-            if (activeEl) {
-                activeEl.classList.add('active');
-                activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const currentEl = document.getElementById(`seg-${index}`);
+            if (currentEl) {
+                currentEl.classList.add('active');
+                currentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
 
+            // Gán nguồn MP3 cho audio
             audio.src = getTTSUrl(segments[index]);
+            audio.load();
+            
+            document.getElementById('uiStatus').innerText = `Đoạn ${index + 1} / ${segments.length}`;
+            updateProgressBar();
             updateMediaSession();
         }
 
-        // 3. Điều khiển Play/Pause
+        // ===== 3. ĐIỀU KHIỂN & CHẠY NỀN =====
         function togglePlay() {
             if (isPlaying) pause(); else play();
         }
@@ -131,20 +181,20 @@
             audio.play().then(() => {
                 isPlaying = true;
                 playBtn.innerText = '⏸';
-                trackStatus.innerText = `Đang phát (${currentIndex + 1}/${segments.length})`;
+                disc.classList.add('playing');
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
-            }).catch(e => console.error("Lỗi phát:", e));
+            }).catch(e => console.log("User interaction required"));
         }
 
         function pause() {
             audio.pause();
             isPlaying = false;
             playBtn.innerText = '▶';
-            trackStatus.innerText = "Đã dừng";
+            disc.classList.remove('playing');
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
         }
 
-        function next() {
+        function goNext() {
             if (currentIndex < segments.length - 1) {
                 currentIndex++;
                 loadSegment(currentIndex);
@@ -152,7 +202,7 @@
             }
         }
 
-        function prev() {
+        function goPrev() {
             if (currentIndex > 0) {
                 currentIndex--;
                 loadSegment(currentIndex);
@@ -160,24 +210,30 @@
             }
         }
 
-        // 4. Tự động chuyển bài (Loop luồng MP3)
+        // TỰ ĐỘNG CHUYỂN ĐOẠN (Đây là chìa khóa để chạy nền liên tục)
         audio.onended = function() {
-            next();
+            goNext();
         };
 
-        // 5. Media Session (Quan trọng để điều khiển ngoài màn hình khóa)
+        function updateProgressBar() {
+            const progress = ((currentIndex + 1) / segments.length) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+        }
+
+        // ===== 4. MEDIA SESSION (HIỆN Ở MÀN HÌNH KHÓA) =====
         function updateMediaSession() {
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
-                    title: segments[currentIndex].substring(0, 50) + '...',
-                    artist: document.getElementById('fileName').innerText || "Truyện Audio",
+                    title: segments[currentIndex].substring(0, 40) + "...",
+                    artist: fileName || "Truyện Audio MP3",
+                    album: "Đang phát ngầm",
                     artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/3844/3844721.png', sizes: '512x512', type: 'image/png' }]
                 });
 
                 navigator.mediaSession.setActionHandler('play', play);
                 navigator.mediaSession.setActionHandler('pause', pause);
-                navigator.mediaSession.setActionHandler('previoustrack', prev);
-                navigator.mediaSession.setActionHandler('nexttrack', next);
+                navigator.mediaSession.setActionHandler('previoustrack', goPrev);
+                navigator.mediaSession.setActionHandler('nexttrack', goNext);
             }
         }
     </script>
